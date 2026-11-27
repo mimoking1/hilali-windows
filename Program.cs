@@ -8,7 +8,7 @@ namespace HilaliWin;
 
 static class Program
 {
-    public static bool SelfTest;
+    public static bool SelfTest; public static bool Real;
     public static string OutDir = ".";
     [STAThread]
     static void Main(string[] args)
@@ -17,6 +17,7 @@ static class Program
         for (int i = 0; i < args.Length; i++)
         {
             if (args[i] == "--selftest") SelfTest = true;
+            if (args[i] == "--real") Real = true;
             if (args[i] == "--out" && i + 1 < args.Length) OutDir = args[++i];
         }
         Application.Run(new BrowserForm(false));
@@ -75,7 +76,7 @@ class BrowserForm : Form
     readonly TextBox addr = new TextBox { Dock = DockStyle.Fill, Font = new Font("Segoe UI", 11f), BorderStyle = BorderStyle.FixedSingle };
     readonly Label status = new Label { Dock = DockStyle.Bottom, Height = 22, TextAlign = ContentAlignment.MiddleLeft, BackColor = Bar, Font = new Font("Segoe UI", 9f) };
     readonly Label credit = new Label { AutoSize = false, Width = 270, Dock = DockStyle.Right, TextAlign = ContentAlignment.MiddleCenter, BackColor = Color.FromArgb(200, 255, 255, 255), ForeColor = Color.Black, Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), Text = "Directed by Mohamed Sayed · محمد سيد" };
-    int blocked;
+    int blocked; Button fwdBtn, backBtn;
     readonly System.Text.StringBuilder log = new();
 
     public BrowserForm(bool isPrivate)
@@ -98,6 +99,8 @@ class BrowserForm : Form
         top.Controls.Add(right);
         top.Controls.Add(B("⌂", (s, e) => Cur()?.CoreWebView2?.NavigateToString(HomeHtml())));
         top.Controls.Add(B("⟳", (s, e) => Cur()?.CoreWebView2?.Reload()));
+        fwdBtn = B("▶", (s, e) => { if (Cur()?.CoreWebView2?.CanGoForward == true) Cur().CoreWebView2.GoForward(); });
+        backBtn = B("◀", (s, e) => { if (Cur()?.CoreWebView2?.CanGoBack == true) Cur().CoreWebView2.GoBack(); });
         top.Controls.Add(B("▶", (s, e) => { if (Cur()?.CoreWebView2?.CanGoForward == true) Cur().CoreWebView2.GoForward(); }));
         top.Controls.Add(B("◀", (s, e) => { if (Cur()?.CoreWebView2?.CanGoBack == true) Cur().CoreWebView2.GoBack(); }));
         // dock order: add in reverse so left buttons appear in order
@@ -211,6 +214,12 @@ button{padding:0 24px;border-radius:30px;border:0;background:#4fb2f7;color:#fff;
         Cur()?.CoreWebView2?.Navigate(url);
     }
 
+    public static void Desk(string name)
+    {
+        var b = Screen.PrimaryScreen.Bounds; var bmp = new Bitmap(b.Width, b.Height);
+        using (var g = Graphics.FromImage(bmp)) g.CopyFromScreen(b.Location, Point.Empty, b.Size);
+        bmp.Save(Path.Combine(Program.OutDir, name));
+    }
     public void Shot(string name)
     {
         var bmp = new Bitmap(Width, Height);
@@ -266,15 +275,28 @@ button{padding:0 24px;border-radius:30px;border:0;background:#4fb2f7;color:#fff;
 
             // Tahmeel hand-off against a mock bridge on 48917 (real Tahmeel not available on runner)
             var got = new TaskCompletionSource<string>();
-            var hl = new System.Net.HttpListener(); hl.Prefixes.Add("http://127.0.0.1:48917/"); hl.Start();
-            _ = Task.Run(async () => { while (hl.IsListening) { try { var cx = await hl.GetContextAsync(); var body = new StreamReader(cx.Request.InputStream).ReadToEnd(); cx.Response.StatusCode = 200; cx.Response.Close(); got.TrySetResult(cx.Request.Url.AbsolutePath + " " + body); } catch { } } });
+            var hl = new System.Net.HttpListener(); if (!Program.Real) hl.Prefixes.Add("http://127.0.0.1:48917/"); if (!Program.Real) hl.Start();
+            if (!Program.Real) _ = Task.Run(async () => { while (hl.IsListening) { try { var cx = await hl.GetContextAsync(); var body = new StreamReader(cx.Request.InputStream).ReadToEnd(); cx.Response.StatusCode = 200; cx.Response.Close(); got.TrySetResult(cx.Request.Url.AbsolutePath + " " + body); } catch { } } });
             var nav3 = Wait(w, 12000);
             Go("https://example.com");
             await nav3;
-            w.CoreWebView2.Navigate("https://github.com/mimoking1/hilali-windows/archive/refs/heads/main.zip");
-            var done = await Task.WhenAny(got.Task, Task.Delay(15000));
-            R("download handed to Tahmeel bridge (MOCK bridge)", done == got.Task, done == got.Task ? got.Task.Result : "no request seen");
-            hl.Stop();
+            if (!Program.Real) w.CoreWebView2.Navigate("https://github.com/mimoking1/hilali-windows/archive/refs/heads/main.zip");
+            else { Go("http://127.0.0.1:8099/handoff.zip"); await Task.Delay(1500); }
+            var done = Program.Real ? await Task.WhenAny(Task.Delay(12000)) : await Task.WhenAny(got.Task, Task.Delay(15000));
+            if (Program.Real) { R("real Tahmeel: hand-off logged by Hilali", log.ToString().Contains("TAHMEEL-HANDOFF"), "see server log + desktop shot"); Desk("06-desktop-tahmeel.png"); }
+            else R("download handed to Tahmeel bridge (MOCK bridge)", done == got.Task, done == got.Task ? got.Task.Result : "no request seen");
+            if (!Program.Real) hl.Stop();
+            // typing + back/forward
+            Activate(); addr.Focus(); addr.SelectAll();
+            SendKeys.SendWait("example.org{ENTER}"); await Task.Delay(5000);
+            var s1 = Cur().CoreWebView2.Source; R("typing in address bar navigates", s1.Contains("example.org"), s1);
+            backBtn.PerformClick(); await Task.Delay(3000);
+            var s2 = Cur().CoreWebView2.Source; R("back button", s2 != s1, s2);
+            fwdBtn.PerformClick(); await Task.Delay(3000);
+            var s3 = Cur().CoreWebView2.Source; R("forward button", s3.Contains("example.org"), s3);
+            Shot("07-typing-fwd.png");
+            var rtl = await Cur().CoreWebView2.ExecuteScriptAsync("1");
+            await Task.Delay(100);
             // private window
             var pf = new BrowserForm(true); pf.Show(); await Task.Delay(6000);
             R("private window opens (temp profile)", pf.Visible && pf.Text.Contains("خاص"), pf.Text);

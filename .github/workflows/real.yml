@@ -1,0 +1,49 @@
+name: real-tahmeel
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  win:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish
+        run: dotnet publish Hilali.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o out
+      - name: Download real Tahmeel installer
+        run: curl.exe -L -o Tahmeel-Setup.exe https://github.com/mimoking1/custom-os-build/releases/download/tahmeel-v5/Tahmeel-Setup.exe
+      - name: Install Tahmeel silently
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force proof | Out-Null
+          $p = Start-Process .\Tahmeel-Setup.exe -ArgumentList "/S" -PassThru
+          $p | Wait-Process -Timeout 300 -ErrorAction SilentlyContinue
+          "installer exit: $($p.ExitCode)" | Tee-Object proof\install.txt
+          Get-ChildItem "$env:LOCALAPPDATA\Programs","$env:ProgramFiles","${env:ProgramFiles(x86)}" -Filter "*ahmeel*" -ErrorAction SilentlyContinue | Select -Expand FullName | Tee-Object -Append proof\install.txt
+      - name: Launch Tahmeel, serve file, run Hilali
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          function Desk($n){ $b=[System.Windows.Forms.Screen]::PrimaryScreen.Bounds; $bmp=New-Object System.Drawing.Bitmap $b.Width,$b.Height; $g=[System.Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($b.Location,[System.Drawing.Point]::Empty,$b.Size); $bmp.Save("$PWD\proof\$n") }
+          $exe = Get-ChildItem "$env:LOCALAPPDATA","$env:ProgramFiles","${env:ProgramFiles(x86)}" -Recurse -Include "Tahmeel*.exe" -ErrorAction SilentlyContinue | ? { $_.Name -notmatch "uninst|Setup" } | Select -First 1
+          "tahmeel exe: $($exe.FullName)" | Tee-Object -Append proof\install.txt
+          if ($exe) { Start-Process $exe.FullName }
+          Start-Sleep 20
+          try { $r = Invoke-WebRequest http://127.0.0.1:48917/ping -UseBasicParsing -TimeoutSec 3; "bridge status $($r.StatusCode)" } catch { "bridge answer: $($_.Exception.Message)" } | Tee-Object -Append proof\install.txt
+          Desk "00-tahmeel-launched.png"
+          New-Item -ItemType Directory -Force srv | Out-Null
+          $bytes = New-Object byte[] 3000000; (New-Object Random).NextBytes($bytes); [IO.File]::WriteAllBytes("$PWD\srv\handoff.zip",$bytes)
+          Start-Process python -ArgumentList "-m","http.server","8099","--bind","127.0.0.1","--directory","srv" -RedirectStandardError proof\srv.log -WindowStyle Hidden
+          Start-Sleep 3
+          $p = Start-Process .\out\Hilali.exe -ArgumentList "--selftest","--real","--out","$PWD\proof" -PassThru
+          $p | Wait-Process -Timeout 200 -ErrorAction SilentlyContinue
+          if (-not $p.HasExited) { $p.Kill(); "TIMEOUT" | Out-File proof\timeout.txt }
+          Start-Sleep 5
+          Desk "08-desktop-after.png"
+          Get-ChildItem srv, "$env:USERPROFILE\Downloads" -ErrorAction SilentlyContinue | Format-Table | Out-File proof\files.txt
+          Get-Process | ? { $_.ProcessName -match "ahmeel" } | Select ProcessName,Id | Out-File proof\procs.txt
+          Get-Content proof\results.txt
+          Get-Content proof\srv.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: proof-real, path: proof }
