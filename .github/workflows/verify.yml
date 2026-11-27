@@ -1,0 +1,27 @@
+name: verify-release
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  v:
+    runs-on: windows-latest
+    steps:
+      - name: Download released asset and launch it
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          New-Item -ItemType Directory -Force proof | Out-Null
+          curl.exe -L -o rel.exe https://github.com/mimoking1/hilali-windows/releases/download/v0.2.0/Hilali-Windows-x64.exe
+          $h = (Get-FileHash rel.exe -Algorithm SHA256).Hash.ToLower()
+          "sha256 $h size $((Get-Item rel.exe).Length)" | Tee-Object proof\verify.txt
+          if ($h -ne "3e1ceb0f066b5b542813d3fbd123a54080af55ab6e36a113f0245dd8a79da551") { throw "hash mismatch" }
+          $q = Start-Process .\rel.exe -ArgumentList "--homecheck","--sig","bottom","--out","$PWD\proof" -PassThru
+          $q | Wait-Process -Timeout 90 -ErrorAction SilentlyContinue
+          if (-not $q.HasExited) { $q.Kill(); throw "did not finish" }
+          Get-Content proof\homecheck.txt | Tee-Object -Append proof\verify.txt
+          if (-not (Test-Path proof\20-after-restart-night.png)) { throw "no screenshot" }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verify
+          path: proof
