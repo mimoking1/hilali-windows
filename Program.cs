@@ -271,7 +271,7 @@ button{padding:0 24px;border-radius:30px;border:0;background:#4fb2f7;color:#fff;
             var nav3 = Wait(w, 12000);
             Go("https://example.com");
             await nav3;
-            await w.CoreWebView2.ExecuteScriptAsync("var a=document.createElement('a');a.href='https://raw.githubusercontent.com/github/gitignore/main/Go.gitignore';a.download='Go.gitignore';document.body.appendChild(a);a.click();");
+            w.CoreWebView2.Navigate("https://github.com/mimoking1/hilali-windows/archive/refs/heads/main.zip");
             var done = await Task.WhenAny(got.Task, Task.Delay(15000));
             R("download handed to Tahmeel bridge (MOCK bridge)", done == got.Task, done == got.Task ? got.Task.Result : "no request seen");
             hl.Stop();
