@@ -176,7 +176,7 @@ class BrowserForm : Form
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;font-family:'Segoe UI',Tahoma,sans-serif;color:#0d3558;display:flex;flex-direction:column;align-items:center;justify-content:center;
 background:radial-gradient(ellipse at 20% 15%,#ffffff 0,rgba(255,255,255,0) 40%),radial-gradient(ellipse at 85% 80%,#a8f0ff 0,rgba(168,240,255,0) 45%),linear-gradient(180deg,#8fd3ff 0%,#c7ebff 55%,#eaf8ff 100%);overflow:hidden}
-.cloud{position:fixed;background:rgba(255,255,255,.75);border-radius:60px;filter:blur(1px);box-shadow:inset 0 -8px 14px rgba(120,190,240,.35)}
+.moon,h1,.sub,form,.tiles{position:relative;z-index:2}.cloud{z-index:0;position:fixed;background:rgba(255,255,255,.75);border-radius:60px;filter:blur(1px);box-shadow:inset 0 -8px 14px rgba(120,190,240,.35)}
 .moon{width:min(150px,15vh);height:min(177px,17.7vh);background:url(@@MOON@@) center/contain no-repeat;filter:drop-shadow(0 0 22px rgba(255,255,255,.95)) drop-shadow(0 12px 14px rgba(20,90,160,.35));margin-bottom:6px;animation:fl 5s ease-in-out infinite}
 @keyframes fl{50%{transform:translateY(-8px)}}
 h1{font-size:min(92px,11vh);margin:0;line-height:1.1;font-weight:900;background:linear-gradient(180deg,#46c9ff,#1478da);-webkit-background-clip:text;color:transparent;filter:drop-shadow(0 4px 0 #0e5aa8) drop-shadow(0 10px 12px rgba(10,60,120,.35))}
