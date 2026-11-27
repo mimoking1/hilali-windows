@@ -185,11 +185,14 @@ button{padding:0 24px;border-radius:30px;border:0;background:#4fb2f7;color:#fff;
         c.NewWindowRequested += (s, e) => { e.Handled = true; var u = e.Uri; BeginInvoke(new Action(async () => await NewTab(u))); };
         c.DownloadStarting += async (s, e) =>
         {
+            var def = e.GetDeferral();
+            try {
             var durl = e.DownloadOperation.Uri;
             var ua = ""; try { ua = await c.ExecuteScriptAsync("navigator.userAgent"); ua = ua.Trim('"'); } catch { }
             string ck = ""; try { var cs = await c.CookieManager.GetCookiesAsync(durl); ck = string.Join("; ", cs.Select(x => x.Name + "=" + x.Value)); } catch { }
             if (await Tahmeel.Add(durl, c.Source, ua, ck)) { e.Cancel = true; e.Handled = true; log.AppendLine("TAHMEEL-HANDOFF " + durl); status.Text = "أُرسل إلى تحميل"; }
             else log.AppendLine("TAHMEEL-UNAVAILABLE, using built-in download " + durl);
+            } catch (Exception ex) { log.AppendLine("DL-ERR " + ex.Message); } finally { def.Complete(); }
         };
         try { c.Profile.PreferredTrackingPreventionLevel = CoreWebView2TrackingPreventionLevel.Strict; } catch { }
         if (url != null) c.Navigate(url); else c.NavigateToString(HomeHtml());
@@ -274,7 +277,7 @@ button{padding:0 24px;border-radius:30px;border:0;background:#4fb2f7;color:#fff;
             hl.Stop();
             // private window
             var pf = new BrowserForm(true); pf.Show(); await Task.Delay(6000);
-            R("private window opens (temp profile)", pf.Visible && pf.Text.Contains("Private"), pf.Text);
+            R("private window opens (temp profile)", pf.Visible && pf.Text.Contains("خاص"), pf.Text);
             pf.Shot("05-private.png");
             pf.Close();
             R("private profile deleted on close", true, "checked by FormClosed handler");
