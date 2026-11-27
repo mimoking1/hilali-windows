@@ -103,10 +103,10 @@ class BrowserForm : Form
         status.ForeColor = pal.Ink;
         bar.Controls.AddRange(new Control[] { backBtn, fwdBtn, reloadBtn, homeBtn, pill, privBtn });
         pill.Controls.Add(addr);
-        foot.Controls.AddRange(new Control[] { status, credit });
+        foot.Controls.Add(status); strip.Controls.Add(credit); strip.Reserve = 350; strip.Resize += (s2, e2) => LayoutStrip();
         Controls.Add(body); Controls.Add(foot); Controls.Add(bar); Controls.Add(strip);
         bar.Resize += (s, e) => LayoutBar(); foot.Resize += (s, e) => LayoutFoot();
-        LayoutBar(); LayoutFoot();
+        LayoutBar(); LayoutFoot(); LayoutStrip();
         backBtn.Click += (s, e) => { if (Cur()?.CoreWebView2?.CanGoBack == true) Cur().CoreWebView2.GoBack(); };
         fwdBtn.Click += (s, e) => { if (Cur()?.CoreWebView2?.CanGoForward == true) Cur().CoreWebView2.GoForward(); };
         reloadBtn.Click += (s, e) => Cur()?.CoreWebView2?.Reload();
@@ -146,11 +146,8 @@ class BrowserForm : Form
         pill.SetBounds(x + 8, 7, Math.Max(100, pw), 54);
         addr.SetBounds(26, 16, pill.Width - 52, 26);
     }
-    void LayoutFoot()
-    {
-        credit.Location = new Point(foot.Width - credit.Width - 14, 2); credit.Height = 30;
-        status.SetBounds(16, 0, Math.Max(50, foot.Width - credit.Width - 50), foot.Height);
-    }
+    void LayoutStrip() { credit.Height = 34; credit.Location = new Point(strip.Width - credit.Width - 14, 8); }
+    void LayoutFoot() { status.SetBounds(16, 0, Math.Max(50, foot.Width - 32), foot.Height); }
 
     WebView2 Cur() => strip.Selected?.View;
     void SelectTab(TabItem t)

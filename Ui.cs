@@ -142,13 +142,13 @@ class TabItem { public string Title = "هلالي"; public WebView2 View; public
 
 class TabStrip : Control
 {
-    public List<TabItem> Tabs = new(); public TabItem Selected; public Palette Pal = Palette.Day;
+    public int Reserve = 90; public List<TabItem> Tabs = new(); public TabItem Selected; public Palette Pal = Palette.Day;
     public event Action<TabItem> Select, CloseReq; public event Action NewReq;
     Rectangle plus; TabItem hot; bool hotPlus;
     public TabStrip() { SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true); Font = new Font("Segoe UI", 10f, FontStyle.Bold); }
     void LayoutTabs()
     {
-        int n = Math.Max(1, Tabs.Count); int w = Math.Min(230, (Width - 90) / n); int x = 14;
+        int n = Math.Max(1, Tabs.Count); int w = Math.Min(230, (Width - Reserve) / n); int x = 14;
         foreach (var t in Tabs) { t.Rect = new Rectangle(x, 8, w, Height - 8); t.Close = new Rectangle(t.Rect.Right - 28, t.Rect.Y + (t.Rect.Height - 20) / 2 + 1, 20, 20); x += w + 4; }
         plus = new Rectangle(x + 2, 11, 34, 28);
     }
