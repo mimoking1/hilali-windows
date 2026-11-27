@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Net.Http;
 using System.Text;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
@@ -19,6 +20,22 @@ static class Program
             if (args[i] == "--out" && i + 1 < args.Length) OutDir = args[++i];
         }
         Application.Run(new BrowserForm(false));
+    }
+}
+
+static class Tahmeel
+{
+    static readonly HttpClient H = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
+    public static async Task<bool> Add(string url, string referrer, string ua, string cookie)
+    {
+        if (!url.StartsWith("http")) return false;
+        try
+        {
+            var j = System.Text.Json.JsonSerializer.Serialize(new { url, referrer, userAgent = ua, cookie, source = "capture" });
+            var r = await H.PostAsync("http://127.0.0.1:48917/add", new StringContent(j, Encoding.UTF8, "application/json"));
+            return r.IsSuccessStatusCode;
+        }
+        catch { return false; }
     }
 }
 
@@ -166,6 +183,14 @@ button{padding:0 24px;border-radius:30px;border:0;background:#4fb2f7;color:#fff;
         c.SourceChanged += (s, e) => { if (tabs.SelectedTab == page && c.Source.StartsWith("http")) addr.Text = c.Source; };
         c.DocumentTitleChanged += (s, e) => { var t = c.DocumentTitle ?? ""; page.Text = t.Length > 22 ? t.Substring(0, 22) + "…" : t; if (tabs.SelectedTab == page) Text = (priv ? "(خاص) " : "") + t + " - هلالي"; };
         c.NewWindowRequested += (s, e) => { e.Handled = true; var u = e.Uri; BeginInvoke(new Action(async () => await NewTab(u))); };
+        c.DownloadStarting += async (s, e) =>
+        {
+            var durl = e.DownloadOperation.Uri;
+            var ua = ""; try { ua = await c.ExecuteScriptAsync("navigator.userAgent"); ua = ua.Trim('"'); } catch { }
+            string ck = ""; try { var cs = await c.CookieManager.GetCookiesAsync(durl); ck = string.Join("; ", cs.Select(x => x.Name + "=" + x.Value)); } catch { }
+            if (await Tahmeel.Add(durl, c.Source, ua, ck)) { e.Cancel = true; e.Handled = true; log.AppendLine("TAHMEEL-HANDOFF " + durl); status.Text = "أُرسل إلى تحميل"; }
+            else log.AppendLine("TAHMEEL-UNAVAILABLE, using built-in download " + durl);
+        };
         try { c.Profile.PreferredTrackingPreventionLevel = CoreWebView2TrackingPreventionLevel.Strict; } catch { }
         if (url != null) c.Navigate(url); else c.NavigateToString(HomeHtml());
         return wv;
@@ -236,6 +261,17 @@ button{padding:0 24px;border-radius:30px;border:0;background:#4fb2f7;color:#fff;
             R("second tab opens", tabs.TabCount == 2, "tabs=" + tabs.TabCount);
             Shot("04-two-tabs.png");
 
+            // Tahmeel hand-off against a mock bridge on 48917 (real Tahmeel not available on runner)
+            var got = new TaskCompletionSource<string>();
+            var hl = new System.Net.HttpListener(); hl.Prefixes.Add("http://127.0.0.1:48917/"); hl.Start();
+            _ = Task.Run(async () => { while (hl.IsListening) { try { var cx = await hl.GetContextAsync(); var body = new StreamReader(cx.Request.InputStream).ReadToEnd(); cx.Response.StatusCode = 200; cx.Response.Close(); got.TrySetResult(cx.Request.Url.AbsolutePath + " " + body); } catch { } } });
+            var nav3 = Wait(w, 12000);
+            Go("https://example.com");
+            await nav3;
+            await w.CoreWebView2.ExecuteScriptAsync("var a=document.createElement('a');a.href='https://raw.githubusercontent.com/github/gitignore/main/Go.gitignore';a.download='Go.gitignore';document.body.appendChild(a);a.click();");
+            var done = await Task.WhenAny(got.Task, Task.Delay(15000));
+            R("download handed to Tahmeel bridge (MOCK bridge)", done == got.Task, done == got.Task ? got.Task.Result : "no request seen");
+            hl.Stop();
             // private window
             var pf = new BrowserForm(true); pf.Show(); await Task.Delay(6000);
             R("private window opens (temp profile)", pf.Visible && pf.Text.Contains("Private"), pf.Text);
