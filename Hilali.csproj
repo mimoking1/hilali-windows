@@ -8,10 +8,11 @@
     <AssemblyName>Hilali</AssemblyName>
     <ApplicationIcon>hilali.ico</ApplicationIcon>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
-    <Version>0.1.0-proof</Version>
+    <Version>0.2.0-proof</Version><LangVersion>11</LangVersion>
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="hilali.ico" LogicalName="Hilali.hilali.ico" />
+    <EmbeddedResource Include="crescent.png" LogicalName="Hilali.crescent.png" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.*" />

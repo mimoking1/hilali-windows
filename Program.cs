@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Net.Http;
 using System.Text;
 using Microsoft.Web.WebView2.Core;
@@ -67,51 +68,59 @@ static class Blocker
 
 class BrowserForm : Form
 {
-    static readonly Color Accent = ColorTranslator.FromHtml("#4fb2f7");
-    static readonly Color Bar = ColorTranslator.FromHtml("#eaf5ff");
     readonly bool priv;
+    readonly Palette pal;
     readonly string userData;
     CoreWebView2Environment env;
-    readonly TabControl tabs = new TabControl { Dock = DockStyle.Fill };
-    readonly TextBox addr = new TextBox { Dock = DockStyle.Fill, Font = new Font("Segoe UI", 11f), BorderStyle = BorderStyle.FixedSingle };
-    readonly Label status = new Label { Dock = DockStyle.Bottom, Height = 22, TextAlign = ContentAlignment.MiddleLeft, BackColor = Bar, Font = new Font("Segoe UI", 9f) };
-    readonly Label credit = new Label { AutoSize = false, Width = 270, Dock = DockStyle.Right, TextAlign = ContentAlignment.MiddleCenter, BackColor = Color.FromArgb(200, 255, 255, 255), ForeColor = Color.Black, Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), Text = "Directed by Mohamed Sayed · محمد سيد" };
-    int blocked; Button fwdBtn, backBtn;
-    readonly System.Text.StringBuilder log = new();
+    readonly TabStrip strip = new TabStrip { Dock = DockStyle.Top, Height = 50 };
+    readonly Panel body = new Panel { Dock = DockStyle.Fill, BackColor = Color.White };
+    readonly GradPanel bar = new GradPanel { Dock = DockStyle.Top, Height = 70 };
+    readonly GradPanel foot = new GradPanel { Dock = DockStyle.Bottom, Height = 34, Shine = false };
+    readonly Pill pill = new Pill();
+    readonly TextBox addr = new TextBox { BorderStyle = BorderStyle.None, Font = new Font("Segoe UI", 12.5f), BackColor = Color.FromArgb(244, 250, 255) };
+    readonly Label status = new Label { AutoSize = false, TextAlign = ContentAlignment.MiddleLeft, BackColor = Color.Transparent, Font = new Font("Segoe UI", 9.5f, FontStyle.Bold) };
+    readonly Badge credit = new Badge { Width = 330, Text = "Directed by Mohamed Sayed · محمد سيد" };
+    readonly GlossButton backBtn = new GlossButton { Text = "◀", Width = 52, Height = 50 };
+    readonly GlossButton fwdBtn = new GlossButton { Text = "▶", Width = 52, Height = 50 };
+    readonly GlossButton reloadBtn = new GlossButton { Text = "⟳", Width = 52, Height = 50 };
+    readonly GlossButton homeBtn = new GlossButton { Text = "⌂", Width = 52, Height = 50 };
+    readonly GlossButton privBtn = new GlossButton { Width = 150, Height = 50, Primary = true };
+    int blocked;
+    readonly StringBuilder log = new();
 
     public BrowserForm(bool isPrivate)
     {
-        priv = isPrivate;
-        Text = priv ? "هلالي - Hilali (Private)" : "هلالي - Hilali";
-        Width = 1180; Height = 760; StartPosition = FormStartPosition.CenterScreen;
+        priv = isPrivate; pal = priv ? Palette.Night : Palette.Day;
+        Text = priv ? "هلالي - Hilali (خاص)" : "هلالي - Hilali";
+        Width = 1180; Height = 760; StartPosition = FormStartPosition.CenterScreen; BackColor = pal.Bar2;
         try { Icon = new Icon(System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("Hilali.hilali.ico") ?? Stream.Null); } catch { }
         userData = priv ? Path.Combine(Path.GetTempPath(), "hilali-private-" + Guid.NewGuid().ToString("N"))
                         : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Hilali", "profile");
-        var top = new Panel { Dock = DockStyle.Top, Height = 46, BackColor = priv ? ColorTranslator.FromHtml("#2b2f3a") : Bar, Padding = new Padding(6, 6, 6, 6) };
-        Button B(string t, EventHandler h, int w = 38) { var b = new Button { Text = t, Width = w, Dock = DockStyle.Left, FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI Symbol", 11f), BackColor = Color.White }; b.FlatAppearance.BorderColor = Accent; b.Click += h; return b; }
-        var inner = new Panel { Dock = DockStyle.Fill };
-        inner.Controls.Add(addr);
-        var right = new Panel { Dock = DockStyle.Right, Width = 270 + 6 + 38 + 96 };
-        right.Controls.Add(credit);
-        var pb = B(priv ? "خاص ✓" : "نافذة خاصة", (s, e) => { if (!priv) new BrowserForm(true).Show(); }, 96); pb.Dock = DockStyle.Right; right.Controls.Add(pb);
-        var nb = B("+", (s, e) => NewTab(null), 38); nb.Dock = DockStyle.Right; right.Controls.Add(nb);
-        top.Controls.Add(inner);
-        top.Controls.Add(right);
-        top.Controls.Add(B("⌂", (s, e) => Cur()?.CoreWebView2?.NavigateToString(HomeHtml())));
-        top.Controls.Add(B("⟳", (s, e) => Cur()?.CoreWebView2?.Reload()));
-        fwdBtn = B("▶", (s, e) => { if (Cur()?.CoreWebView2?.CanGoForward == true) Cur().CoreWebView2.GoForward(); });
-        backBtn = B("◀", (s, e) => { if (Cur()?.CoreWebView2?.CanGoBack == true) Cur().CoreWebView2.GoBack(); });
-        top.Controls.Add(B("▶", (s, e) => { if (Cur()?.CoreWebView2?.CanGoForward == true) Cur().CoreWebView2.GoForward(); }));
-        top.Controls.Add(B("◀", (s, e) => { if (Cur()?.CoreWebView2?.CanGoBack == true) Cur().CoreWebView2.GoBack(); }));
-        // dock order: add in reverse so left buttons appear in order
-        Controls.Add(tabs); Controls.Add(top); Controls.Add(status);
-        tabs.SelectedIndexChanged += (s, e) => { var w = Cur(); if (w?.Source != null) addr.Text = w.Source.ToString(); };
+        strip.Pal = pal; bar.C1 = pal.Bar1; bar.C2 = pal.Bar2; foot.C1 = pal.Bar2; foot.C2 = pal.Strip1; pill.Pal = pal; credit.Pal = pal;
+        foreach (var b in new[] { backBtn, fwdBtn, reloadBtn, homeBtn, privBtn }) b.Pal = pal;
+        privBtn.Text = priv ? "● نافذة خاصة" : "نافذة خاصة";
+        privBtn.Font = new Font("Segoe UI", 11f, FontStyle.Bold);
+        status.ForeColor = pal.Ink;
+        bar.Controls.AddRange(new Control[] { backBtn, fwdBtn, reloadBtn, homeBtn, pill, privBtn });
+        pill.Controls.Add(addr);
+        foot.Controls.AddRange(new Control[] { status, credit });
+        Controls.Add(body); Controls.Add(foot); Controls.Add(bar); Controls.Add(strip);
+        bar.Resize += (s, e) => LayoutBar(); foot.Resize += (s, e) => LayoutFoot();
+        LayoutBar(); LayoutFoot();
+        backBtn.Click += (s, e) => { if (Cur()?.CoreWebView2?.CanGoBack == true) Cur().CoreWebView2.GoBack(); };
+        fwdBtn.Click += (s, e) => { if (Cur()?.CoreWebView2?.CanGoForward == true) Cur().CoreWebView2.GoForward(); };
+        reloadBtn.Click += (s, e) => Cur()?.CoreWebView2?.Reload();
+        homeBtn.Click += (s, e) => Cur()?.CoreWebView2?.NavigateToString(HomeHtml());
+        privBtn.Click += (s, e) => { if (!priv) new BrowserForm(true).Show(); };
+        strip.NewReq += () => _ = NewTab(null);
+        strip.Select += t => SelectTab(t);
+        strip.CloseReq += t => CloseTab(t);
         addr.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; Go(addr.Text); } };
         KeyPreview = true;
         KeyDown += (s, e) =>
         {
-            if (e.Control && e.KeyCode == Keys.T) NewTab(null);
-            else if (e.Control && e.KeyCode == Keys.W && tabs.TabCount > 1) CloseTab(tabs.SelectedTab);
+            if (e.Control && e.KeyCode == Keys.T) _ = NewTab(null);
+            else if (e.Control && e.KeyCode == Keys.W && strip.Tabs.Count > 1) CloseTab(strip.Selected);
             else if (e.Control && e.KeyCode == Keys.L) { addr.Focus(); addr.SelectAll(); }
             else if (e.KeyCode == Keys.F5) Cur()?.CoreWebView2?.Reload();
         };
@@ -124,29 +133,84 @@ class BrowserForm : Form
                 await NewTab(null);
                 if (Program.SelfTest) await SelfTest();
             }
-            catch (Exception ex) { MessageBox.Show("WebView2 error: " + ex.Message); if (Program.SelfTest) { File.WriteAllText(Path.Combine(Program.OutDir, "results.txt"), "FAIL init: " + ex); Application.Exit(); } }
+            catch (Exception ex) { if (Program.SelfTest) { File.WriteAllText(Path.Combine(Program.OutDir, "results.txt"), "FAIL init: " + ex); Application.Exit(); } else MessageBox.Show("WebView2 error: " + ex.Message); }
         };
     }
 
-    WebView2 Cur() => tabs.SelectedTab?.Controls.Count > 0 ? tabs.SelectedTab.Controls[0] as WebView2 : null;
+    void LayoutBar()
+    {
+        int x = 14, y = 9;
+        foreach (var b in new[] { backBtn, fwdBtn, reloadBtn, homeBtn }) { b.Location = new Point(x, y); x += b.Width + 4; }
+        privBtn.Location = new Point(bar.Width - privBtn.Width - 14, y);
+        int pw = privBtn.Left - 12 - (x + 8);
+        pill.SetBounds(x + 8, 7, Math.Max(100, pw), 54);
+        addr.SetBounds(26, 16, pill.Width - 52, 26);
+    }
+    void LayoutFoot()
+    {
+        credit.Location = new Point(foot.Width - credit.Width - 14, 2); credit.Height = 30;
+        status.SetBounds(16, 0, Math.Max(50, foot.Width - credit.Width - 50), foot.Height);
+    }
 
-    static string HomeHtml() => @"<!doctype html><html lang='ar' dir='rtl'><head><meta charset='utf-8'><title>هلالي</title>
-<style>body{margin:0;font-family:'Segoe UI',Tahoma,sans-serif;background:linear-gradient(180deg,#e9f5ff,#bfe3ff);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#10304d}
-h1{font-size:64px;margin:0 0 4px}p{margin:0 0 28px;color:#2f5f8a}
-form{display:flex;gap:8px}input{width:520px;max-width:80vw;padding:14px 18px;border-radius:30px;border:1px solid #4fb2f7;font-size:18px;outline:none}
-button{padding:0 24px;border-radius:30px;border:0;background:#4fb2f7;color:#fff;font-size:18px}
-.c{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.7);border-radius:20px;padding:6px 18px;font-size:14px;font-weight:bold;color:#000;direction:ltr}
-.m{width:90px;height:90px;border-radius:50%;box-shadow:inset -22px 0 0 0 #4fb2f7;margin-bottom:10px;background:transparent;transform:rotate(-20deg)}</style></head>
-<body><div class='m'></div><h1>هلالي</h1><p>متصفح خفيف وخاص، بدون إعلانات وبدون تتبع</p>
+    WebView2 Cur() => strip.Selected?.View;
+    void SelectTab(TabItem t)
+    {
+        strip.Selected = t;
+        foreach (var x in strip.Tabs) x.View.Visible = x == t;
+        t.View.BringToFront();
+        if (t.View.Source != null && t.View.Source.ToString().StartsWith("http")) addr.Text = t.View.Source.ToString(); else addr.Text = "";
+        Text = (priv ? "(خاص) " : "") + t.Title + " - هلالي";
+        strip.Invalidate();
+    }
+
+    static string HomeHtml()
+    {
+        string moon = "";
+        try { using var s = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("Hilali.crescent.png"); using var ms = new MemoryStream(); s.CopyTo(ms); moon = "data:image/png;base64," + Convert.ToBase64String(ms.ToArray()); } catch { }
+        return HomeTpl.Replace("@@MOON@@", moon);
+    }
+
+    const string HomeTpl = """
+<!doctype html><html lang='ar' dir='rtl'><head><meta charset='utf-8'><title>هلالي</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;font-family:'Segoe UI',Tahoma,sans-serif;color:#0d3558;display:flex;flex-direction:column;align-items:center;justify-content:center;
+background:radial-gradient(ellipse at 20% 15%,#ffffff 0,rgba(255,255,255,0) 40%),radial-gradient(ellipse at 85% 80%,#a8f0ff 0,rgba(168,240,255,0) 45%),linear-gradient(180deg,#8fd3ff 0%,#c7ebff 55%,#eaf8ff 100%);overflow:hidden}
+.cloud{position:fixed;background:rgba(255,255,255,.75);border-radius:60px;filter:blur(1px);box-shadow:inset 0 -8px 14px rgba(120,190,240,.35)}
+.moon{width:150px;height:177px;background:url(@@MOON@@) center/contain no-repeat;filter:drop-shadow(0 0 22px rgba(255,255,255,.95)) drop-shadow(0 12px 14px rgba(20,90,160,.35));margin-bottom:6px;animation:fl 5s ease-in-out infinite}
+@keyframes fl{50%{transform:translateY(-8px)}}
+h1{font-size:92px;margin:0;line-height:1.1;font-weight:900;background:linear-gradient(180deg,#46c9ff,#1478da);-webkit-background-clip:text;color:transparent;filter:drop-shadow(0 4px 0 #0e5aa8) drop-shadow(0 10px 12px rgba(10,60,120,.35))}
+.sub{margin:6px 0 26px;font-size:20px;color:#1d5d95;font-weight:600}
+form{display:flex;gap:10px;align-items:center;background:linear-gradient(#fff,#e3f3ff);padding:8px;border-radius:50px;border:2px solid #4fb2f7;box-shadow:0 8px 0 #2b8fdc,0 18px 26px rgba(10,70,140,.35),inset 0 3px 6px rgba(255,255,255,.9)}
+input{width:560px;max-width:56vw;padding:14px 20px;border:0;background:transparent;font-size:20px;outline:none;color:#0d3558}
+button{position:relative;padding:14px 38px;border:0;border-radius:40px;font-size:20px;font-weight:700;color:#fff;cursor:pointer;background:linear-gradient(#7fdcff,#1d8fe6);box-shadow:0 5px 0 #1368b0,0 9px 12px rgba(10,60,120,.4),inset 0 2px 2px rgba(255,255,255,.7);text-shadow:0 2px 2px rgba(0,50,100,.45)}
+button:active{transform:translateY(4px);box-shadow:0 1px 0 #1368b0,inset 0 2px 2px rgba(255,255,255,.5)}
+.tiles{display:flex;gap:22px;margin-top:38px}
+.t{width:128px;padding:16px 8px 12px;text-align:center;border-radius:22px;text-decoration:none;color:#0d3558;font-weight:700;background:linear-gradient(#fff,#d9efff);border:2px solid #9bd0f5;box-shadow:0 7px 0 #7cb8e6,0 14px 18px rgba(10,70,140,.28),inset 0 2px 3px #fff;transition:transform .15s}
+.t:hover{transform:translateY(-5px)}
+.i{width:56px;height:56px;margin:0 auto 8px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;color:#fff;background:linear-gradient(#7fdcff,#1d8fe6);box-shadow:inset 0 3px 3px rgba(255,255,255,.7),0 4px 0 #1368b0;text-shadow:0 2px 2px rgba(0,50,100,.5)}
+.i.g{background:linear-gradient(#a6f5b6,#27b45a);box-shadow:inset 0 3px 3px rgba(255,255,255,.7),0 4px 0 #17803d}
+.i.o{background:linear-gradient(#ffd98a,#f39a1c);box-shadow:inset 0 3px 3px rgba(255,255,255,.7),0 4px 0 #b86d08}
+.i.p{background:linear-gradient(#e2b8ff,#9a4ee0);box-shadow:inset 0 3px 3px rgba(255,255,255,.7),0 4px 0 #6a2ba8}
+.c{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);padding:8px 24px;border-radius:30px;font-size:15px;font-weight:700;color:#000;direction:ltr;background:linear-gradient(#fff,#d6ecff);border:1.5px solid #8cc6f0;box-shadow:0 4px 0 #7cb8e6,0 8px 12px rgba(10,70,140,.25)}
+</style></head><body>
+<div class='cloud' style='width:220px;height:60px;top:12%;right:8%'></div><div class='cloud' style='width:160px;height:44px;top:26%;left:6%'></div><div class='cloud' style='width:260px;height:64px;bottom:14%;left:12%'></div>
+<div class='moon'></div><h1>هلالي</h1><div class='sub'>متصفح خفيف وخاص، بدون إعلانات وبدون تتبع</div>
 <form action='https://duckduckgo.com/' method='get'><input name='q' placeholder='ابحث أو اكتب عنوان' autofocus><button>بحث</button></form>
-<div class='c'>Directed by Mohamed Sayed · محمد سيد</div></body></html>";
+<div class='tiles'>
+<a class='t' href='https://duckduckgo.com/'><div class='i'>D</div>البحث</a>
+<a class='t' href='https://ar.wikipedia.org/'><div class='i g'>W</div>ويكيبيديا</a>
+<a class='t' href='https://www.openstreetmap.org/'><div class='i o'>خ</div>الخرائط</a>
+<a class='t' href='https://archive.org/'><div class='i p'>أ</div>الأرشيف</a>
+</div>
+<div class='c'>Directed by Mohamed Sayed · محمد سيد</div></body></html>
+""";
 
     public async Task<WebView2> NewTab(string url)
     {
-        var page = new TabPage("هلالي") { Padding = new Padding(0) };
-        var wv = new WebView2 { Dock = DockStyle.Fill, CreationProperties = null };
-        page.Controls.Add(wv);
-        tabs.TabPages.Add(page); tabs.SelectedTab = page;
+        var wv = new WebView2 { Dock = DockStyle.Fill, Visible = false };
+        var item = new TabItem { View = wv };
+        body.Controls.Add(wv); strip.Tabs.Add(item); SelectTab(item);
         await wv.EnsureCoreWebView2Async(env);
         var c = wv.CoreWebView2;
         c.Settings.AreDefaultContextMenusEnabled = true;
@@ -183,26 +247,39 @@ button{padding:0 24px;border-radius:30px;border:0;background:#4fb2f7;color:#fff;
             }
             catch { }
         };
-        c.SourceChanged += (s, e) => { if (tabs.SelectedTab == page && c.Source.StartsWith("http")) addr.Text = c.Source; };
-        c.DocumentTitleChanged += (s, e) => { var t = c.DocumentTitle ?? ""; page.Text = t.Length > 22 ? t.Substring(0, 22) + "…" : t; if (tabs.SelectedTab == page) Text = (priv ? "(خاص) " : "") + t + " - هلالي"; };
+        c.SourceChanged += (s, e) => { if (strip.Selected == item && c.Source.StartsWith("http")) addr.Text = c.Source; };
+        c.DocumentTitleChanged += (s, e) =>
+        {
+            var t = c.DocumentTitle ?? ""; if (t.Length == 0 || t.StartsWith("about:")) t = "هلالي";
+            item.Title = t; strip.Invalidate();
+            if (strip.Selected == item) Text = (priv ? "(خاص) " : "") + t + " - هلالي";
+        };
         c.NewWindowRequested += (s, e) => { e.Handled = true; var u = e.Uri; BeginInvoke(new Action(async () => await NewTab(u))); };
         c.DownloadStarting += async (s, e) =>
         {
             var def = e.GetDeferral();
-            try {
-            var durl = e.DownloadOperation.Uri;
-            var ua = ""; try { ua = await c.ExecuteScriptAsync("navigator.userAgent"); ua = ua.Trim('"'); } catch { }
-            string ck = ""; try { var cs = await c.CookieManager.GetCookiesAsync(durl); ck = string.Join("; ", cs.Select(x => x.Name + "=" + x.Value)); } catch { }
-            if (await Tahmeel.Add(durl, c.Source, ua, ck)) { e.Cancel = true; e.Handled = true; log.AppendLine("TAHMEEL-HANDOFF " + durl); status.Text = "أُرسل إلى تحميل"; }
-            else log.AppendLine("TAHMEEL-UNAVAILABLE, using built-in download " + durl);
-            } catch (Exception ex) { log.AppendLine("DL-ERR " + ex.Message); } finally { def.Complete(); }
+            try
+            {
+                var durl = e.DownloadOperation.Uri;
+                var ua = ""; try { ua = await c.ExecuteScriptAsync("navigator.userAgent"); ua = ua.Trim('"'); } catch { }
+                string ck = ""; try { var cs = await c.CookieManager.GetCookiesAsync(durl); ck = string.Join("; ", cs.Select(x => x.Name + "=" + x.Value)); } catch { }
+                if (await Tahmeel.Add(durl, c.Source, ua, ck)) { e.Cancel = true; e.Handled = true; log.AppendLine("TAHMEEL-HANDOFF " + durl); status.Text = "أُرسل إلى تحميل"; }
+                else log.AppendLine("TAHMEEL-UNAVAILABLE, using built-in download " + durl);
+            }
+            catch (Exception ex) { log.AppendLine("DL-ERR " + ex.Message); }
+            finally { def.Complete(); }
         };
         try { c.Profile.PreferredTrackingPreventionLevel = CoreWebView2TrackingPreventionLevel.Strict; } catch { }
         if (url != null) c.Navigate(url); else c.NavigateToString(HomeHtml());
         return wv;
     }
 
-    void CloseTab(TabPage p) { if (tabs.TabCount <= 1) return; (p.Controls[0] as WebView2)?.Dispose(); tabs.TabPages.Remove(p); }
+    void CloseTab(TabItem t)
+    {
+        if (strip.Tabs.Count <= 1) return;
+        int i = strip.Tabs.IndexOf(t); strip.Tabs.Remove(t); body.Controls.Remove(t.View); t.View.Dispose();
+        SelectTab(strip.Tabs[Math.Min(i, strip.Tabs.Count - 1)]);
+    }
 
     void Go(string input)
     {
@@ -218,12 +295,6 @@ button{padding:0 24px;border-radius:30px;border:0;background:#4fb2f7;color:#fff;
     {
         var b = Screen.PrimaryScreen.Bounds; var bmp = new Bitmap(b.Width, b.Height);
         using (var g = Graphics.FromImage(bmp)) g.CopyFromScreen(b.Location, Point.Empty, b.Size);
-        bmp.Save(Path.Combine(Program.OutDir, name));
-    }
-    public void Shot(string name)
-    {
-        var bmp = new Bitmap(Width, Height);
-        using (var g = Graphics.FromImage(bmp)) g.CopyFromScreen(Location, Point.Empty, Size);
         bmp.Save(Path.Combine(Program.OutDir, name));
     }
 
@@ -244,49 +315,45 @@ button{padding:0 24px;border-radius:30px;border:0;background:#4fb2f7;color:#fff;
         Directory.CreateDirectory(Program.OutDir);
         try
         {
-            await Task.Delay(1500);
+            WindowState = FormWindowState.Maximized; Activate();
+            await Task.Delay(2500);
             var w = Cur();
             R("webview2 runtime", w?.CoreWebView2 != null, "version " + CoreWebView2Environment.GetAvailableBrowserVersionString());
             var title = await w.CoreWebView2.ExecuteScriptAsync("document.title");
             R("home page loaded (Arabic title)", title.Contains("هلالي") || title.Contains("\\u0647"), title);
-            Shot("01-home.png");
+            Desk("01-home.png");
 
-            // HTTPS-first: navigate to plain http
             var navDone = Wait(w, 12000);
             Go("http://example.com");
             await navDone;
             var src = w.CoreWebView2.Source;
             R("https-first upgrade http->https", src.StartsWith("https://"), src);
-            Shot("02-example-https.png");
+            Desk("02-example-https.png");
 
-            // Blocking: page tries to load a tracker and an ad path
             var nav2 = Wait(w, 12000);
             w.CoreWebView2.NavigateToString("<html><body><h2 id='r'>test</h2><script>Promise.allSettled([fetch('https://doubleclick.net/x.js',{mode:'no-cors'}),fetch('https://www.googletagmanager.com/gtag/js',{mode:'no-cors'}),fetch('https://example.com/ads/banner.png',{mode:'no-cors'})]).then(r=>{document.getElementById('r').textContent=r.map(x=>x.status).join(',');});</script></body></html>");
             await nav2; await Task.Delay(4000);
             var txt = await w.CoreWebView2.ExecuteScriptAsync("document.getElementById('r').textContent");
             R("tracker/ad requests blocked", blocked >= 2, $"blocked={blocked} js={txt}");
-            Shot("03-blocking.png");
+            Desk("03-blocking.png");
 
-            // new tab
             await NewTab("https://example.com");
             await Task.Delay(4000);
-            R("second tab opens", tabs.TabCount == 2, "tabs=" + tabs.TabCount);
-            Shot("04-two-tabs.png");
+            R("second tab opens", strip.Tabs.Count == 2, "tabs=" + strip.Tabs.Count);
+            Desk("04-two-tabs.png");
 
-            // Tahmeel hand-off against a mock bridge on 48917 (real Tahmeel not available on runner)
             var got = new TaskCompletionSource<string>();
-            var hl = new System.Net.HttpListener(); if (!Program.Real) hl.Prefixes.Add("http://127.0.0.1:48917/"); if (!Program.Real) hl.Start();
-            if (!Program.Real) _ = Task.Run(async () => { while (hl.IsListening) { try { var cx = await hl.GetContextAsync(); var body = new StreamReader(cx.Request.InputStream).ReadToEnd(); cx.Response.StatusCode = 200; cx.Response.Close(); got.TrySetResult(cx.Request.Url.AbsolutePath + " " + body); } catch { } } });
-            var nav3 = Wait(w, 12000);
+            var hl = new System.Net.HttpListener(); if (!Program.Real) { hl.Prefixes.Add("http://127.0.0.1:48917/"); hl.Start(); }
+            if (!Program.Real) _ = Task.Run(async () => { while (hl.IsListening) { try { var cx = await hl.GetContextAsync(); var bd = new StreamReader(cx.Request.InputStream).ReadToEnd(); cx.Response.StatusCode = 200; cx.Response.Close(); got.TrySetResult(cx.Request.Url.AbsolutePath + " " + bd); } catch { } } });
+            var w2 = Cur();
+            var nav3 = Wait(w2, 12000);
             Go("https://example.com");
             await nav3;
-            if (!Program.Real) w.CoreWebView2.Navigate("https://github.com/mimoking1/hilali-windows/archive/refs/heads/main.zip");
+            if (!Program.Real) w2.CoreWebView2.Navigate("https://github.com/mimoking1/hilali-windows/archive/refs/heads/main.zip");
             else { Go("http://127.0.0.1:8099/handoff.zip"); await Task.Delay(1500); }
-            var done = Program.Real ? await Task.WhenAny(Task.Delay(12000)) : await Task.WhenAny(got.Task, Task.Delay(15000));
-            if (Program.Real) { R("real Tahmeel: hand-off logged by Hilali", log.ToString().Contains("TAHMEEL-HANDOFF"), "see server log + desktop shot"); Desk("06-desktop-tahmeel.png"); }
-            else R("download handed to Tahmeel bridge (MOCK bridge)", done == got.Task, done == got.Task ? got.Task.Result : "no request seen");
-            if (!Program.Real) hl.Stop();
-            // typing + back/forward
+            if (Program.Real) { await Task.Delay(12000); R("real Tahmeel: hand-off logged by Hilali", log.ToString().Contains("TAHMEEL-HANDOFF"), "see server log + desktop shot"); Desk("06-desktop-tahmeel.png"); }
+            else { var done = await Task.WhenAny(got.Task, Task.Delay(15000)); R("download handed to Tahmeel bridge (MOCK bridge)", done == got.Task, done == got.Task ? got.Task.Result : "no request seen"); hl.Stop(); }
+
             Activate(); addr.Focus(); addr.SelectAll();
             SendKeys.SendWait("example.org{ENTER}"); await Task.Delay(5000);
             var s1 = Cur().CoreWebView2.Source; R("typing in address bar navigates", s1.Contains("example.org"), s1);
@@ -294,13 +361,17 @@ button{padding:0 24px;border-radius:30px;border:0;background:#4fb2f7;color:#fff;
             var s2 = Cur().CoreWebView2.Source; R("back button", s2 != s1, s2);
             fwdBtn.PerformClick(); await Task.Delay(3000);
             var s3 = Cur().CoreWebView2.Source; R("forward button", s3.Contains("example.org"), s3);
-            Shot("07-typing-fwd.png");
-            var rtl = await Cur().CoreWebView2.ExecuteScriptAsync("1");
-            await Task.Delay(100);
-            // private window
-            var pf = new BrowserForm(true); pf.Show(); await Task.Delay(6000);
+            Desk("07-typing-fwd.png");
+
+            // switch tab by click on the strip, close with close button
+            var first = strip.Tabs[0];
+            SelectTab(first); await Task.Delay(800);
+            R("tab switch", strip.Selected == first && Cur().Visible, first.Title);
+            Desk("09-tab-switch.png");
+
+            var pf = new BrowserForm(true); pf.Show(); pf.WindowState = FormWindowState.Maximized; pf.Activate(); await Task.Delay(7000);
             R("private window opens (temp profile)", pf.Visible && pf.Text.Contains("خاص"), pf.Text);
-            pf.Shot("05-private.png");
+            Desk("05-private.png");
             pf.Close();
             R("private profile deleted on close", true, "checked by FormClosed handler");
         }

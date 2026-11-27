@@ -64,5 +64,5 @@ jobs:
           $h = (Get-FileHash Hilali-Windows-x64.exe -Algorithm SHA256).Hash.ToLower()
           "$h  Hilali-Windows-x64.exe" | Out-File -Encoding ascii Hilali-Windows-x64.exe.sha256
           $res = Get-Content proof\results.txt -Raw
-          "Hilali for Windows 0.1.0 (first proof). Unsigned; Chromium (WebView2). All runner tests passed incl. real Tahmeel hand-off.`n`nsha256: $h`n`n$res" | Out-File -Encoding utf8 notes.md
-          gh release create "v0.1.0-proof-$env:GITHUB_RUN_NUMBER" Hilali-Windows-x64.exe Hilali-Windows-x64.exe.sha256 --title "Hilali for Windows 0.1.0 (proof)" --notes-file notes.md
+          "Hilali for Windows 0.2.0 (first proof). Unsigned; Chromium (WebView2). All runner tests passed incl. real Tahmeel hand-off.`n`nsha256: $h`n`n$res" | Out-File -Encoding utf8 notes.md
+          gh release create "v0.2.0-proof-$env:GITHUB_RUN_NUMBER" Hilali-Windows-x64.exe Hilali-Windows-x64.exe.sha256 --title "Hilali for Windows 0.2.0 (proof, new UI)" --notes-file notes.md
