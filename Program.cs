@@ -131,7 +131,7 @@ class BrowserForm : Form
             {
                 env = await CoreWebView2Environment.CreateAsync(null, userData);
                 await NewTab(null);
-                if (Program.SelfTest) await SelfTest();
+                if (Program.SelfTest && !priv) await SelfTest();
             }
             catch (Exception ex) { if (Program.SelfTest) { File.WriteAllText(Path.Combine(Program.OutDir, "results.txt"), "FAIL init: " + ex); Application.Exit(); } else MessageBox.Show("WebView2 error: " + ex.Message); }
         };
@@ -177,18 +177,18 @@ class BrowserForm : Form
 body{margin:0;min-height:100vh;font-family:'Segoe UI',Tahoma,sans-serif;color:#0d3558;display:flex;flex-direction:column;align-items:center;justify-content:center;
 background:radial-gradient(ellipse at 20% 15%,#ffffff 0,rgba(255,255,255,0) 40%),radial-gradient(ellipse at 85% 80%,#a8f0ff 0,rgba(168,240,255,0) 45%),linear-gradient(180deg,#8fd3ff 0%,#c7ebff 55%,#eaf8ff 100%);overflow:hidden}
 .cloud{position:fixed;background:rgba(255,255,255,.75);border-radius:60px;filter:blur(1px);box-shadow:inset 0 -8px 14px rgba(120,190,240,.35)}
-.moon{width:150px;height:177px;background:url(@@MOON@@) center/contain no-repeat;filter:drop-shadow(0 0 22px rgba(255,255,255,.95)) drop-shadow(0 12px 14px rgba(20,90,160,.35));margin-bottom:6px;animation:fl 5s ease-in-out infinite}
+.moon{width:min(150px,15vh);height:min(177px,17.7vh);background:url(@@MOON@@) center/contain no-repeat;filter:drop-shadow(0 0 22px rgba(255,255,255,.95)) drop-shadow(0 12px 14px rgba(20,90,160,.35));margin-bottom:6px;animation:fl 5s ease-in-out infinite}
 @keyframes fl{50%{transform:translateY(-8px)}}
-h1{font-size:92px;margin:0;line-height:1.1;font-weight:900;background:linear-gradient(180deg,#46c9ff,#1478da);-webkit-background-clip:text;color:transparent;filter:drop-shadow(0 4px 0 #0e5aa8) drop-shadow(0 10px 12px rgba(10,60,120,.35))}
-.sub{margin:6px 0 26px;font-size:20px;color:#1d5d95;font-weight:600}
+h1{font-size:min(92px,11vh);margin:0;line-height:1.1;font-weight:900;background:linear-gradient(180deg,#46c9ff,#1478da);-webkit-background-clip:text;color:transparent;filter:drop-shadow(0 4px 0 #0e5aa8) drop-shadow(0 10px 12px rgba(10,60,120,.35))}
+.sub{margin:.6vh 0 3vh;font-size:min(20px,2.8vh);color:#1d5d95;font-weight:600}
 form{display:flex;gap:10px;align-items:center;background:linear-gradient(#fff,#e3f3ff);padding:8px;border-radius:50px;border:2px solid #4fb2f7;box-shadow:0 8px 0 #2b8fdc,0 18px 26px rgba(10,70,140,.35),inset 0 3px 6px rgba(255,255,255,.9)}
-input{width:560px;max-width:56vw;padding:14px 20px;border:0;background:transparent;font-size:20px;outline:none;color:#0d3558}
-button{position:relative;padding:14px 38px;border:0;border-radius:40px;font-size:20px;font-weight:700;color:#fff;cursor:pointer;background:linear-gradient(#7fdcff,#1d8fe6);box-shadow:0 5px 0 #1368b0,0 9px 12px rgba(10,60,120,.4),inset 0 2px 2px rgba(255,255,255,.7);text-shadow:0 2px 2px rgba(0,50,100,.45)}
+input{width:560px;max-width:56vw;padding:min(14px,1.8vh) 20px;border:0;background:transparent;font-size:20px;outline:none;color:#0d3558}
+button{position:relative;padding:min(14px,1.8vh) 38px;border:0;border-radius:40px;font-size:20px;font-weight:700;color:#fff;cursor:pointer;background:linear-gradient(#7fdcff,#1d8fe6);box-shadow:0 5px 0 #1368b0,0 9px 12px rgba(10,60,120,.4),inset 0 2px 2px rgba(255,255,255,.7);text-shadow:0 2px 2px rgba(0,50,100,.45)}
 button:active{transform:translateY(4px);box-shadow:0 1px 0 #1368b0,inset 0 2px 2px rgba(255,255,255,.5)}
-.tiles{display:flex;gap:22px;margin-top:38px}
-.t{width:128px;padding:16px 8px 12px;text-align:center;border-radius:22px;text-decoration:none;color:#0d3558;font-weight:700;background:linear-gradient(#fff,#d9efff);border:2px solid #9bd0f5;box-shadow:0 7px 0 #7cb8e6,0 14px 18px rgba(10,70,140,.28),inset 0 2px 3px #fff;transition:transform .15s}
+.tiles{display:flex;gap:22px;margin-top:4.5vh}
+.t{width:128px;padding:min(16px,1.8vh) 8px min(12px,1.4vh);text-align:center;border-radius:22px;text-decoration:none;color:#0d3558;font-weight:700;background:linear-gradient(#fff,#d9efff);border:2px solid #9bd0f5;box-shadow:0 7px 0 #7cb8e6,0 14px 18px rgba(10,70,140,.28),inset 0 2px 3px #fff;transition:transform .15s}
 .t:hover{transform:translateY(-5px)}
-.i{width:56px;height:56px;margin:0 auto 8px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;color:#fff;background:linear-gradient(#7fdcff,#1d8fe6);box-shadow:inset 0 3px 3px rgba(255,255,255,.7),0 4px 0 #1368b0;text-shadow:0 2px 2px rgba(0,50,100,.5)}
+.i{width:min(56px,6.4vh);height:min(56px,6.4vh);margin:0 auto 8px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;color:#fff;background:linear-gradient(#7fdcff,#1d8fe6);box-shadow:inset 0 3px 3px rgba(255,255,255,.7),0 4px 0 #1368b0;text-shadow:0 2px 2px rgba(0,50,100,.5)}
 .i.g{background:linear-gradient(#a6f5b6,#27b45a);box-shadow:inset 0 3px 3px rgba(255,255,255,.7),0 4px 0 #17803d}
 .i.o{background:linear-gradient(#ffd98a,#f39a1c);box-shadow:inset 0 3px 3px rgba(255,255,255,.7),0 4px 0 #b86d08}
 .i.p{background:linear-gradient(#e2b8ff,#9a4ee0);box-shadow:inset 0 3px 3px rgba(255,255,255,.7),0 4px 0 #6a2ba8}

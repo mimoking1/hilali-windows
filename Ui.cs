@@ -98,9 +98,6 @@ class GlossButton : Control
             G.Gloss(g, r, rad, Primary ? 140 : 190, 10);
             using (var pen = new Pen(Primary ? Pal.Border : Color.FromArgb(150, 90, 160, 220), 1.4f)) g.DrawPath(pen, p);
         }
-        // bottom inner light for depth
-        using (var p = new Pen(Color.FromArgb(Primary ? 90 : 120, 255, 255, 255)))
-            g.DrawArc(p, r.X + 3, r.Bottom - rad * 2 - 2, r.Width - 7, rad * 2, 20, 140);
         var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap };
         var tr = new RectangleF(r.X, r.Y, r.Width, r.Height);
         if (Primary) using (var sb = new SolidBrush(Color.FromArgb(110, 10, 50, 100))) g.DrawString(Text, Font, sb, new RectangleF(tr.X, tr.Y + 1.5f, tr.Width, tr.Height), sf);
@@ -138,7 +135,6 @@ class Pill : Panel
         using var p = G.RR(r, rad);
         using (var b = new LinearGradientBrush(r, Color.FromArgb(232, 243, 252), Color.White, 90f)) g.FillPath(b, p);
         using (var pen = new Pen(Pal.Border, 1.8f)) g.DrawPath(pen, p);
-        using (var pen = new Pen(Color.FromArgb(70, 20, 70, 130))) g.DrawArc(pen, r.X + 6, r.Y + 2, r.Width - 12, rad * 2 - 4, 195, 150);
     }
 }
 
