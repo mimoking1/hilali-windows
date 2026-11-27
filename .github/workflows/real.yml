@@ -45,6 +45,10 @@ jobs:
           if (-not $p.HasExited) { $p.Kill(); "TIMEOUT" | Out-File proof\timeout.txt }
           Start-Sleep 5
           Desk "08-desktop-after.png"
+          $q = Start-Process .\out\Hilali.exe -ArgumentList "--homecheck","--sig","${{ matrix.sig }}","--out","$PWD\proof" -PassThru
+          $q | Wait-Process -Timeout 60 -ErrorAction SilentlyContinue
+          if (-not $q.HasExited) { $q.Kill() }
+          Get-Content proof\homecheck.txt
           Get-ChildItem srv, "$env:USERPROFILE\Downloads" -ErrorAction SilentlyContinue | Format-Table | Out-File proof\files.txt
           Get-Process | ? { $_.ProcessName -match "ahmeel" } | Select ProcessName,Id | Out-File proof\procs.txt
           Get-Content proof\results.txt

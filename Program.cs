@@ -9,7 +9,7 @@ namespace HilaliWin;
 
 static class Program
 {
-    public static bool SelfTest; public static bool Real; public static bool SigBottom;
+    public static bool SelfTest; public static bool Real; public static bool SigBottom; public static bool HomeCheck;
     public static string OutDir = ".";
     [STAThread]
     static void Main(string[] args)
@@ -19,6 +19,7 @@ static class Program
         {
             if (args[i] == "--selftest") SelfTest = true;
             if (args[i] == "--real") Real = true;
+            if (args[i] == "--homecheck") HomeCheck = true;
             if (args[i] == "--sig" && i + 1 < args.Length) SigBottom = args[i + 1] == "bottom";
             if (args[i] == "--out" && i + 1 < args.Length) OutDir = args[++i];
         }
@@ -86,8 +87,38 @@ class BrowserForm : Form
     readonly GlossButton fwdBtn = new GlossButton { Text = "▶", Width = 44, Height = 44 };
     readonly GlossButton reloadBtn = new GlossButton { Text = "⟳", Width = 44, Height = 44 };
     readonly GlossButton homeBtn = new GlossButton { Text = "⌂", Width = 44, Height = 44 };
-    readonly GlossButton privBtn = new GlossButton { Width = 124, Height = 44, Primary = true };
+    readonly GlossButton privBtn = new GlossButton { Width = 98, Height = 36, Primary = true };
     int blocked;
+    record Short(string N, string U);
+    List<Short> Sc = new();
+    string scPath;
+    static List<Short> DefaultSc() => new() { new("البحث", "https://duckduckgo.com/"), new("ويكيبيديا", "https://ar.wikipedia.org/"), new("الخرائط", "https://www.openstreetmap.org/"), new("الأرشيف", "https://archive.org/") };
+    void LoadSc()
+    {
+        try { var d = System.Text.Json.JsonSerializer.Deserialize<List<Short>>(File.ReadAllText(scPath)); Sc = d != null && d.Count > 0 ? d : DefaultSc(); } catch { Sc = DefaultSc(); }
+    }
+    void SaveSc() { try { Directory.CreateDirectory(Path.GetDirectoryName(scPath)); File.WriteAllText(scPath, System.Text.Json.JsonSerializer.Serialize(Sc)); } catch { } }
+    static string FixUrl(string u)
+    {
+        u = (u ?? "").Trim(); if (u.Length == 0) return null;
+        if (!u.Contains("://")) u = "https://" + u;
+        return Uri.TryCreate(u, UriKind.Absolute, out var x) && (x.Scheme == "https" || x.Scheme == "http") && x.Host.Contains('.') ? x.ToString() : null;
+    }
+    void OnHomeMessage(string json)
+    {
+        using var d = System.Text.Json.JsonDocument.Parse(json); var r = d.RootElement;
+        string t = r.GetProperty("t").GetString();
+        if (t == "del") { int i = r.GetProperty("i").GetInt32(); if (i >= 0 && i < Sc.Count && Sc.Count > 0) { Sc.RemoveAt(i); SaveSc(); } }
+        else if (t == "save")
+        {
+            int i = r.GetProperty("i").GetInt32(); string n = (r.GetProperty("n").GetString() ?? "").Trim(); string u = FixUrl(r.GetProperty("u").GetString());
+            if (n.Length == 0 || n.Length > 30 || u == null) return;
+            if (i >= 0 && i < Sc.Count) Sc[i] = new Short(n, u); else if (Sc.Count < 12) Sc.Add(new Short(n, u)); else return;
+            SaveSc();
+        }
+        else return;
+        Cur()?.CoreWebView2?.NavigateToString(HomeHtml());
+    }
     readonly StringBuilder log = new();
 
     public BrowserForm(bool isPrivate)
@@ -98,10 +129,11 @@ class BrowserForm : Form
         try { Icon = new Icon(System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("Hilali.hilali.ico") ?? Stream.Null); } catch { }
         userData = priv ? Path.Combine(Path.GetTempPath(), "hilali-private-" + Guid.NewGuid().ToString("N"))
                         : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Hilali", "profile");
+        scPath = priv ? Path.Combine(userData, "shortcuts.json") : Path.Combine(Path.GetDirectoryName(userData), "shortcuts.json"); LoadSc();
         strip.Pal = pal; bar.C1 = pal.Bar1; bar.C2 = pal.Bar2; foot.C1 = pal.Bar2; foot.C2 = pal.Strip1; pill.Pal = pal; titleBar.Pal = pal;
         foreach (var b in new[] { backBtn, fwdBtn, reloadBtn, homeBtn, privBtn }) b.Pal = pal;
         privBtn.Text = priv ? "● نافذة خاصة" : "نافذة خاصة";
-        privBtn.Font = new Font("Segoe UI", 10f, FontStyle.Bold);
+        privBtn.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
         status.ForeColor = pal.Ink;
         bar.Controls.AddRange(new Control[] { backBtn, fwdBtn, reloadBtn, homeBtn, pill, privBtn });
         pill.Controls.Add(addr);
@@ -139,6 +171,7 @@ class BrowserForm : Form
             {
                 env = await CoreWebView2Environment.CreateAsync(null, userData);
                 await NewTab(null);
+                if (Program.HomeCheck && !priv) await HomeCheckRun();
                 if (Program.SelfTest && !priv) await SelfTest();
             }
             catch (Exception ex) { if (Program.SelfTest) { File.WriteAllText(Path.Combine(Program.OutDir, "results.txt"), "FAIL init: " + ex); Application.Exit(); } else MessageBox.Show("WebView2 error: " + ex.Message); }
@@ -149,7 +182,7 @@ class BrowserForm : Form
     {
         int x = 12, y = 7;
         foreach (var b in new[] { backBtn, fwdBtn, reloadBtn, homeBtn }) { b.Location = new Point(x, y); x += b.Width + 4; }
-        privBtn.Location = new Point(bar.Width - privBtn.Width - 14, y);
+        privBtn.Location = new Point(bar.Width - privBtn.Width - 14, 12);
         int pw = privBtn.Left - 12 - (x + 8);
         pill.SetBounds(x + 8, 6, Math.Max(100, pw), 46);
         addr.SetBounds(22, 12, pill.Width - 44, 24);
@@ -199,48 +232,16 @@ class BrowserForm : Form
         strip.Invalidate();
     }
 
-    static string HomeHtml()
+    string HomeHtml()
     {
         string moon = "";
         try { using var s = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("Hilali.crescent.png"); using var ms = new MemoryStream(); s.CopyTo(ms); moon = "data:image/png;base64," + Convert.ToBase64String(ms.ToArray()); } catch { }
-        return HomeTpl.Replace("@@MOON@@", moon);
+        var tiles = System.Text.Json.JsonSerializer.Serialize(Sc.Select(x => new { n = x.N, u = x.U })).Replace("<", "\\u003c");
+        return HomeTpl.Replace("@@MOON@@", moon).Replace("@@TILES@@", tiles);
     }
 
-    const string HomeTpl = """
-<!doctype html><html lang='ar' dir='rtl'><head><meta charset='utf-8'><title>هلالي</title>
-<style>
-*{box-sizing:border-box}
-body{margin:0;min-height:100vh;font-family:'Segoe UI',Tahoma,sans-serif;color:#0d3558;display:flex;flex-direction:column;align-items:center;justify-content:center;
-background:radial-gradient(ellipse at 20% 15%,#ffffff 0,rgba(255,255,255,0) 40%),radial-gradient(ellipse at 85% 80%,#a8f0ff 0,rgba(168,240,255,0) 45%),linear-gradient(180deg,#8fd3ff 0%,#c7ebff 55%,#eaf8ff 100%);overflow:hidden}
-.moon,h1,.sub,form,.tiles{position:relative;z-index:2}.cloud{z-index:0;position:fixed;background:rgba(255,255,255,.75);border-radius:60px;filter:blur(1px);box-shadow:inset 0 -8px 14px rgba(120,190,240,.35)}
-.moon{width:min(150px,15vh);height:min(177px,17.7vh);background:url(@@MOON@@) center/contain no-repeat;filter:drop-shadow(0 0 22px rgba(255,255,255,.95)) drop-shadow(0 12px 14px rgba(20,90,160,.35));margin-bottom:6px;animation:fl 5s ease-in-out infinite}
-@keyframes fl{50%{transform:translateY(-8px)}}
-h1{font-size:min(92px,11vh);margin:0;line-height:1.1;font-weight:900;background:linear-gradient(180deg,#46c9ff,#1478da);-webkit-background-clip:text;color:transparent;filter:drop-shadow(0 4px 0 #0e5aa8) drop-shadow(0 10px 12px rgba(10,60,120,.35))}
-.sub{margin:.6vh 0 3vh;font-size:min(20px,2.8vh);color:#1d5d95;font-weight:600}
-form{display:flex;gap:10px;align-items:center;background:linear-gradient(#fff,#e3f3ff);padding:8px;border-radius:50px;border:2px solid #4fb2f7;box-shadow:0 8px 0 #2b8fdc,0 18px 26px rgba(10,70,140,.35),inset 0 3px 6px rgba(255,255,255,.9)}
-input{width:560px;max-width:56vw;padding:min(14px,1.8vh) 20px;border:0;background:transparent;font-size:20px;outline:none;color:#0d3558}
-button{position:relative;padding:min(14px,1.8vh) 38px;border:0;border-radius:40px;font-size:20px;font-weight:700;color:#fff;cursor:pointer;background:linear-gradient(#7fdcff,#1d8fe6);box-shadow:0 5px 0 #1368b0,0 9px 12px rgba(10,60,120,.4),inset 0 2px 2px rgba(255,255,255,.7);text-shadow:0 2px 2px rgba(0,50,100,.45)}
-button:active{transform:translateY(4px);box-shadow:0 1px 0 #1368b0,inset 0 2px 2px rgba(255,255,255,.5)}
-.tiles{display:flex;gap:22px;margin-top:4.5vh}
-.t{width:128px;padding:min(16px,1.8vh) 8px min(12px,1.4vh);text-align:center;border-radius:22px;text-decoration:none;color:#0d3558;font-weight:700;background:linear-gradient(#fff,#d9efff);border:2px solid #9bd0f5;box-shadow:0 7px 0 #7cb8e6,0 14px 18px rgba(10,70,140,.28),inset 0 2px 3px #fff;transition:transform .15s}
-.t:hover{transform:translateY(-5px)}
-.i{width:min(56px,6.4vh);height:min(56px,6.4vh);margin:0 auto 8px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;color:#fff;background:linear-gradient(#7fdcff,#1d8fe6);box-shadow:inset 0 3px 3px rgba(255,255,255,.7),0 4px 0 #1368b0;text-shadow:0 2px 2px rgba(0,50,100,.5)}
-.i.g{background:linear-gradient(#a6f5b6,#27b45a);box-shadow:inset 0 3px 3px rgba(255,255,255,.7),0 4px 0 #17803d}
-.i.o{background:linear-gradient(#ffd98a,#f39a1c);box-shadow:inset 0 3px 3px rgba(255,255,255,.7),0 4px 0 #b86d08}
-.i.p{background:linear-gradient(#e2b8ff,#9a4ee0);box-shadow:inset 0 3px 3px rgba(255,255,255,.7),0 4px 0 #6a2ba8}
-.c{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);padding:8px 24px;border-radius:30px;font-size:15px;font-weight:700;color:#000;direction:ltr;background:linear-gradient(#fff,#d6ecff);border:1.5px solid #8cc6f0;box-shadow:0 4px 0 #7cb8e6,0 8px 12px rgba(10,70,140,.25)}
-</style></head><body>
-<div class='cloud' style='width:220px;height:60px;top:12%;right:8%'></div><div class='cloud' style='width:160px;height:44px;top:26%;left:6%'></div><div class='cloud' style='width:260px;height:64px;bottom:14%;left:12%'></div>
-<div class='moon'></div><h1>هلالي</h1><div class='sub'>متصفح خفيف وخاص، بدون إعلانات وبدون تتبع</div>
-<form action='https://duckduckgo.com/' method='get'><input name='q' placeholder='ابحث أو اكتب عنوان' autofocus><button>بحث</button></form>
-<div class='tiles'>
-<a class='t' href='https://duckduckgo.com/'><div class='i'>D</div>البحث</a>
-<a class='t' href='https://ar.wikipedia.org/'><div class='i g'>W</div>ويكيبيديا</a>
-<a class='t' href='https://www.openstreetmap.org/'><div class='i o'>خ</div>الخرائط</a>
-<a class='t' href='https://archive.org/'><div class='i p'>أ</div>الأرشيف</a>
-</div>
-<div class='c'>Directed by Mohamed Sayed · محمد سيد</div></body></html>
-""";
+    static string HomeTpl => new StreamReader(System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("Hilali.home.html")).ReadToEnd();
+
 
     public async Task<WebView2> NewTab(string url)
     {
@@ -291,6 +292,11 @@ button:active{transform:translateY(4px);box-shadow:0 1px 0 #1368b0,inset 0 2px 2
             if (strip.Selected == item) Text = (priv ? "(خاص) " : "") + t + " - هلالي";
         };
         c.NewWindowRequested += (s, e) => { e.Handled = true; var u = e.Uri; BeginInvoke(new Action(async () => await NewTab(u))); };
+        c.WebMessageReceived += (s, e) =>
+        {
+            try { var src = c.Source ?? ""; if (!(src.StartsWith("about:blank") || src.StartsWith("data:text/html"))) return; OnHomeMessage(e.WebMessageAsJson); }
+            catch (Exception ex) { log.AppendLine("MSG-ERR " + ex.Message); }
+        };
         c.DownloadStarting += async (s, e) =>
         {
             var def = e.GetDeferral();
@@ -344,6 +350,20 @@ button:active{transform:translateY(4px);box-shadow:0 1px 0 #1368b0,inset 0 2px 2
         await Task.Delay(1200);
     }
 
+    [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool SetCursorPos(int x, int y);
+    [System.Runtime.InteropServices.DllImport("user32.dll")] static extern void mouse_event(int f, int dx, int dy, int d, IntPtr e);
+    async Task<string> JS(string js) => (await Cur().CoreWebView2.ExecuteScriptAsync(js)).Trim('"');
+
+    async Task HomeCheckRun()
+    {
+        Directory.CreateDirectory(Program.OutDir);
+        WindowState = FormWindowState.Maximized; Activate(); await Task.Delay(3500);
+        var names = await JS("Array.from(document.querySelectorAll('.t span')).map(x=>x.textContent).join(' , ')");
+        File.WriteAllText(Path.Combine(Program.OutDir, "homecheck.txt"), "tiles after restart: " + System.Text.RegularExpressions.Regex.Unescape(names));
+        Desk("20-after-restart.png");
+        Application.Exit();
+    }
+
     async Task SelfTest()
     {
         var res = new StringBuilder();
@@ -358,6 +378,41 @@ button:active{transform:translateY(4px);box-shadow:0 1px 0 #1368b0,inset 0 2px 2
             var title = await w.CoreWebView2.ExecuteScriptAsync("document.title");
             R("home page loaded (Arabic title)", title.Contains("هلالي") || title.Contains("\\u0647"), title);
             Desk("01-home.png");
+
+            // ---- shortcuts: size, real right-click, edit, add (+), delete, persistence file ----
+            var n0 = await JS("document.querySelectorAll('.t').length");
+            R("home shows 4 shortcut tiles + a + tile", n0 == "5" && await JS("!!document.getElementById('addtile')") == "true", "tiles=" + n0);
+            var tw = await JS("Math.round(document.querySelector('.t').getBoundingClientRect().width)");
+            R("shortcut tile is about half size (was 128px wide)", int.Parse(tw) <= 70, "width=" + tw + "px");
+            var rc = (await JS("(()=>{const r=document.querySelector('.t').getBoundingClientRect();return Math.round(r.left+r.width/2)+'|'+Math.round(r.top+r.height/2)})()")).Split('|');
+            var sp = Cur().PointToScreen(new Point(int.Parse(rc[0]), int.Parse(rc[1])));
+            SetCursorPos(sp.X, sp.Y); await Task.Delay(300);
+            mouse_event(0x0008, 0, 0, 0, IntPtr.Zero); mouse_event(0x0010, 0, 0, 0, IntPtr.Zero); await Task.Delay(800);
+            bool realMenu = await JS("document.getElementById('menu').classList.contains('show')") == "true";
+            if (!realMenu) { await JS("document.querySelector('.t').dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:80,clientY:80}))"); await Task.Delay(500); }
+            bool menuOn = await JS("document.getElementById('menu').classList.contains('show')") == "true";
+            R(realMenu ? "right-click on a shortcut opens edit/delete menu (REAL mouse)" : "right-click menu (synthetic event; real mouse did not open it)", menuOn, "real=" + realMenu);
+            Desk("12-context-menu.png");
+            await JS("document.getElementById('m-edit').click()"); await Task.Delay(400);
+            R("edit dialog opens with current name", await JS("document.getElementById('modal').classList.contains('show')") == "true" && await JS("document.getElementById('mn').value") == "البحث", "");
+            await JS("document.getElementById('mn').value='موقعي';document.getElementById('mu').value='example.org'");
+            Desk("13-edit-dialog.png");
+            await JS("document.getElementById('msave').click()"); await Task.Delay(2500);
+            var nm = await JS("document.querySelector('.t span').textContent"); var hr = await JS("document.querySelector('.t').href");
+            R("edit saved (name + URL fixed to https)", System.Text.RegularExpressions.Regex.Unescape(nm) == "موقعي" && hr.StartsWith("https://example.org"), nm + " " + hr);
+            await JS("document.getElementById('addtile').click()"); await Task.Delay(400);
+            await JS("document.getElementById('mn').value='Test';document.getElementById('mu').value='https://example.net'");
+            await JS("document.getElementById('msave').click()"); await Task.Delay(2500);
+            var n1 = await JS("document.querySelectorAll('.t').length");
+            R("+ tile adds a new shortcut", n1 == "6", "tiles=" + n1);
+            Desk("14-added.png");
+            await JS("document.querySelectorAll('.t')[4].dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:80,clientY:80}))"); await Task.Delay(300);
+            await JS("document.getElementById('m-del').click()"); await Task.Delay(2500);
+            var n2 = await JS("document.querySelectorAll('.t').length");
+            R("delete removes the shortcut", n2 == "5", "tiles=" + n2);
+            var scf = Path.Combine(Path.GetDirectoryName(userData), "shortcuts.json");
+            R("shortcuts saved to disk", File.Exists(scf) && File.ReadAllText(scf).Contains("example.org"), scf);
+            Desk("15-after-edit.png");
 
             var navDone = Wait(w, 12000);
             Go("http://example.com");

@@ -12,6 +12,7 @@
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="hilali.ico" LogicalName="Hilali.hilali.ico" />
+    <EmbeddedResource Include="home.html" LogicalName="Hilali.home.html" />
     <EmbeddedResource Include="crescent.png" LogicalName="Hilali.crescent.png" />
   </ItemGroup>
   <ItemGroup>
