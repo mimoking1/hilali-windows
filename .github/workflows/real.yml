@@ -4,6 +4,10 @@ permissions:
   contents: read
 jobs:
   win:
+    strategy:
+      fail-fast: false
+      matrix:
+        sig: [title, bottom]
     runs-on: windows-latest
     timeout-minutes: 40
     steps:
@@ -36,7 +40,7 @@ jobs:
           $bytes = New-Object byte[] 3000000; (New-Object Random).NextBytes($bytes); [IO.File]::WriteAllBytes("$PWD\srv\handoff.zip",$bytes)
           Start-Process python -ArgumentList "-m","http.server","8099","--bind","127.0.0.1","--directory","srv" -RedirectStandardError proof\srv.log -WindowStyle Hidden
           Start-Sleep 3
-          $p = Start-Process .\out\Hilali.exe -ArgumentList "--selftest","--real","--out","$PWD\proof" -PassThru
+          $p = Start-Process .\out\Hilali.exe -ArgumentList "--selftest","--real","--sig","${{ matrix.sig }}","--out","$PWD\proof" -PassThru
           $p | Wait-Process -Timeout 200 -ErrorAction SilentlyContinue
           if (-not $p.HasExited) { $p.Kill(); "TIMEOUT" | Out-File proof\timeout.txt }
           Start-Sleep 5
@@ -47,9 +51,9 @@ jobs:
           Get-Content proof\srv.log
       - uses: actions/upload-artifact@v4
         if: always()
-        with: { name: proof-real, path: proof }
+        with: { name: proof-real-${{ matrix.sig }}, path: proof }
       - uses: actions/upload-artifact@v4
-        with: { name: exe, path: out/Hilali.exe }
+        with: { name: exe-${{ matrix.sig }}, path: out/Hilali.exe }
       - name: Gate
         shell: pwsh
         run: |

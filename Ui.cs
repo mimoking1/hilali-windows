@@ -74,7 +74,7 @@ class GlossButton : Control
     {
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.ResizeRedraw | ControlStyles.SupportsTransparentBackColor | ControlStyles.Selectable, false);
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.ResizeRedraw | ControlStyles.SupportsTransparentBackColor, true);
-        BackColor = Color.Transparent; Cursor = Cursors.Hand; Font = new Font("Segoe UI Symbol", 13f, FontStyle.Bold);
+        BackColor = Color.Transparent; Cursor = Cursors.Hand; Font = new Font("Segoe UI Symbol", 11f, FontStyle.Bold);
     }
     protected override void OnMouseEnter(EventArgs e) { hover = true; Invalidate(); base.OnMouseEnter(e); }
     protected override void OnMouseLeave(EventArgs e) { hover = false; down = false; Invalidate(); base.OnMouseLeave(e); }
@@ -150,7 +150,7 @@ class TabStrip : Control
     {
         int n = Math.Max(1, Tabs.Count); int w = Math.Min(230, (Width - Reserve) / n); int x = 14;
         foreach (var t in Tabs) { t.Rect = new Rectangle(x, 8, w, Height - 8); t.Close = new Rectangle(t.Rect.Right - 28, t.Rect.Y + (t.Rect.Height - 20) / 2 + 1, 20, 20); x += w + 4; }
-        plus = new Rectangle(x + 2, 11, 34, 28);
+        plus = new Rectangle(x + 2, 8, 30, 26);
     }
     protected override void OnMouseMove(MouseEventArgs e) { var h = Tabs.FirstOrDefault(t => t.Rect.Contains(e.Location)); bool hp = plus.Contains(e.Location); if (h != hot || hp != hotPlus) { hot = h; hotPlus = hp; Invalidate(); } base.OnMouseMove(e); }
     protected override void OnMouseLeave(EventArgs e) { hot = null; hotPlus = false; Invalidate(); base.OnMouseLeave(e); }
@@ -196,7 +196,7 @@ class TabStrip : Control
         var pr = new RectangleF(plus.X, plus.Y, plus.Width, plus.Height);
         G.Shadow(g, pr, 12, 3, 24);
         using (var p = G.RR(pr, 12)) { using var b = new LinearGradientBrush(pr, hotPlus ? Color.White : Color.FromArgb(240, 250, 255), Pal.Hi, 90f); g.FillPath(b, p); G.Gloss(g, pr, 12, 190, 10); using var pen = new Pen(Pal.Border, 1.3f); g.DrawPath(pen, p); }
-        using (var pen = new Pen(Pal.Ink, 2.2f)) { g.DrawLine(pen, pr.X + 10, pr.Y + 14, pr.Right - 10, pr.Y + 14); g.DrawLine(pen, pr.X + 17, pr.Y + 7, pr.X + 17, pr.Bottom - 7); }
+        using (var pen = new Pen(Pal.Ink, 2.2f)) { g.DrawLine(pen, pr.X + 8, pr.Y + 13, pr.Right - 8, pr.Y + 13); g.DrawLine(pen, pr.X + 15, pr.Y + 6, pr.X + 15, pr.Bottom - 6); }
     }
 }
 
@@ -230,7 +230,7 @@ class CapButton : Control
 
 class TitleBar : Control
 {
-    public Palette Pal = Palette.Day; public Icon Ico;
+    public Palette Pal = Palette.Day; public Icon Ico; public bool ShowCredit = true;
     public readonly CapButton Min = new CapButton { Kind = 0 }, Max = new CapButton { Kind = 1 }, Close = new CapButton { Kind = 2 };
     public readonly Badge Credit = new Badge { Width = 330, Text = "Directed by Mohamed Sayed · محمد سيد" };
     public TitleBar()
@@ -243,7 +243,7 @@ class TitleBar : Control
     public void Arrange()
     {
         int bw = 48; Close.SetBounds(Width - bw, 0, bw, Height); Max.SetBounds(Width - 2 * bw, 0, bw, Height); Min.SetBounds(Width - 3 * bw, 0, bw, Height);
-        Credit.Height = 34; Credit.Location = new Point(Math.Max(300, (Width - Credit.Width) / 2), (Height - 34) / 2);
+        Credit.Visible = ShowCredit; Credit.Width = 300; Credit.Font = new Font("Segoe UI", 9f, FontStyle.Bold); Credit.Height = 29; Credit.Location = new Point(Math.Max(300, (Width - Credit.Width) / 2), (Height - 29) / 2);
         Min.Pal = Max.Pal = Close.Pal = Pal; Credit.Pal = Pal;
     }
     protected override void WndProc(ref Message m)
@@ -258,7 +258,7 @@ class TitleBar : Control
         using (var p = new Pen(Color.FromArgb(200, 255, 255, 255))) g.DrawLine(p, 0, 0, Width, 0);
         int x = 12;
         if (Ico != null) { g.DrawIcon(Ico, new Rectangle(x, (Height - 18) / 2, 18, 18)); x += 28; }
-        var tr = new RectangleF(x, 0, Math.Max(10, Credit.Left - x - 12), Height);
+        var tr = new RectangleF(x, 0, Math.Max(10, (ShowCredit ? Credit.Left : Width - 150) - x - 12), Height);
         var sf = new StringFormat { LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap };
         using var tb = new SolidBrush(Pal.Ink); g.DrawString(Text, Font, tb, tr, sf);
     }

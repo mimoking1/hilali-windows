@@ -9,7 +9,7 @@ namespace HilaliWin;
 
 static class Program
 {
-    public static bool SelfTest; public static bool Real;
+    public static bool SelfTest; public static bool Real; public static bool SigBottom;
     public static string OutDir = ".";
     [STAThread]
     static void Main(string[] args)
@@ -19,6 +19,7 @@ static class Program
         {
             if (args[i] == "--selftest") SelfTest = true;
             if (args[i] == "--real") Real = true;
+            if (args[i] == "--sig" && i + 1 < args.Length) SigBottom = args[i + 1] == "bottom";
             if (args[i] == "--out" && i + 1 < args.Length) OutDir = args[++i];
         }
         Application.Run(new BrowserForm(false));
@@ -72,19 +73,20 @@ class BrowserForm : Form
     readonly Palette pal;
     readonly string userData;
     CoreWebView2Environment env;
-    readonly TabStrip strip = new TabStrip { Dock = DockStyle.Top, Height = 50 };
+    readonly TabStrip strip = new TabStrip { Dock = DockStyle.Top, Height = 42 };
     readonly Panel body = new Panel { Dock = DockStyle.Fill, BackColor = Color.White };
-    readonly GradPanel bar = new GradPanel { Dock = DockStyle.Top, Height = 70 };
-    readonly GradPanel foot = new GradPanel { Dock = DockStyle.Bottom, Height = 34, Shine = false };
+    readonly GradPanel bar = new GradPanel { Dock = DockStyle.Top, Height = 58 };
+    readonly GradPanel foot = new GradPanel { Dock = DockStyle.Bottom, Height = 24, Shine = false };
     readonly Pill pill = new Pill();
-    readonly TextBox addr = new TextBox { BorderStyle = BorderStyle.None, Font = new Font("Segoe UI", 12.5f), BackColor = Color.FromArgb(244, 250, 255) };
-    readonly Label status = new Label { AutoSize = false, TextAlign = ContentAlignment.MiddleLeft, BackColor = Color.Transparent, Font = new Font("Segoe UI", 9.5f, FontStyle.Bold) };
-    readonly TitleBar title = new TitleBar { Dock = DockStyle.Top, Height = 42 };
-    readonly GlossButton backBtn = new GlossButton { Text = "◀", Width = 52, Height = 50 };
-    readonly GlossButton fwdBtn = new GlossButton { Text = "▶", Width = 52, Height = 50 };
-    readonly GlossButton reloadBtn = new GlossButton { Text = "⟳", Width = 52, Height = 50 };
-    readonly GlossButton homeBtn = new GlossButton { Text = "⌂", Width = 52, Height = 50 };
-    readonly GlossButton privBtn = new GlossButton { Width = 150, Height = 50, Primary = true };
+    readonly TextBox addr = new TextBox { BorderStyle = BorderStyle.None, Font = new Font("Segoe UI", 11.5f), BackColor = Color.FromArgb(244, 250, 255) };
+    readonly Label status = new Label { AutoSize = false, TextAlign = ContentAlignment.MiddleLeft, BackColor = Color.Transparent, Font = new Font("Segoe UI", 8.5f, FontStyle.Bold) };
+    readonly Badge footCredit = new Badge { Text = "Directed by Mohamed Sayed · محمد سيد" };
+    readonly TitleBar titleBar = new TitleBar { Dock = DockStyle.Top, Height = 36 };
+    readonly GlossButton backBtn = new GlossButton { Text = "◀", Width = 44, Height = 44 };
+    readonly GlossButton fwdBtn = new GlossButton { Text = "▶", Width = 44, Height = 44 };
+    readonly GlossButton reloadBtn = new GlossButton { Text = "⟳", Width = 44, Height = 44 };
+    readonly GlossButton homeBtn = new GlossButton { Text = "⌂", Width = 44, Height = 44 };
+    readonly GlossButton privBtn = new GlossButton { Width = 124, Height = 44, Primary = true };
     int blocked;
     readonly StringBuilder log = new();
 
@@ -96,21 +98,21 @@ class BrowserForm : Form
         try { Icon = new Icon(System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("Hilali.hilali.ico") ?? Stream.Null); } catch { }
         userData = priv ? Path.Combine(Path.GetTempPath(), "hilali-private-" + Guid.NewGuid().ToString("N"))
                         : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Hilali", "profile");
-        strip.Pal = pal; bar.C1 = pal.Bar1; bar.C2 = pal.Bar2; foot.C1 = pal.Bar2; foot.C2 = pal.Strip1; pill.Pal = pal; title.Pal = pal;
+        strip.Pal = pal; bar.C1 = pal.Bar1; bar.C2 = pal.Bar2; foot.C1 = pal.Bar2; foot.C2 = pal.Strip1; pill.Pal = pal; titleBar.Pal = pal;
         foreach (var b in new[] { backBtn, fwdBtn, reloadBtn, homeBtn, privBtn }) b.Pal = pal;
         privBtn.Text = priv ? "● نافذة خاصة" : "نافذة خاصة";
-        privBtn.Font = new Font("Segoe UI", 11f, FontStyle.Bold);
+        privBtn.Font = new Font("Segoe UI", 10f, FontStyle.Bold);
         status.ForeColor = pal.Ink;
         bar.Controls.AddRange(new Control[] { backBtn, fwdBtn, reloadBtn, homeBtn, pill, privBtn });
         pill.Controls.Add(addr);
-        foot.Controls.Add(status);
-        Controls.Add(body); Controls.Add(foot); Controls.Add(bar); Controls.Add(strip); Controls.Add(title);
-        title.Ico = Icon; title.Text = Text; title.Arrange();
-        TextChanged += (s, e) => { title.Text = Text; title.Invalidate(); };
-        title.Min.Click += (s, e) => WindowState = FormWindowState.Minimized;
-        title.Max.Click += (s, e) => WindowState = WindowState == FormWindowState.Maximized ? FormWindowState.Normal : FormWindowState.Maximized;
-        title.Close.Click += (s, e) => Close();
-        Resize += (s, e) => { title.Max.Restored = WindowState == FormWindowState.Maximized; title.Max.Invalidate(); };
+        foot.Controls.Add(status); if (Program.SigBottom) { footCredit.Pal = pal; footCredit.Width = 290; footCredit.Height = 24; footCredit.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold); foot.Controls.Add(footCredit); }
+        Controls.Add(body); Controls.Add(foot); Controls.Add(bar); Controls.Add(strip); Controls.Add(titleBar);
+        titleBar.ShowCredit = !Program.SigBottom; titleBar.Ico = Icon; titleBar.Text = Text; titleBar.Arrange();
+        TextChanged += (s, e) => { titleBar.Text = Text; titleBar.Invalidate(); };
+        titleBar.Min.Click += (s, e) => WindowState = FormWindowState.Minimized;
+        titleBar.Max.Click += (s, e) => WindowState = WindowState == FormWindowState.Maximized ? FormWindowState.Normal : FormWindowState.Maximized;
+        titleBar.Close.Click += (s, e) => Close();
+        Resize += (s, e) => { titleBar.Max.Restored = WindowState == FormWindowState.Maximized; titleBar.Max.Invalidate(); };
         bar.Resize += (s, e) => LayoutBar(); foot.Resize += (s, e) => LayoutFoot();
         LayoutBar(); LayoutFoot();
         backBtn.Click += (s, e) => { if (Cur()?.CoreWebView2?.CanGoBack == true) Cur().CoreWebView2.GoBack(); };
@@ -145,14 +147,14 @@ class BrowserForm : Form
 
     void LayoutBar()
     {
-        int x = 14, y = 9;
+        int x = 12, y = 7;
         foreach (var b in new[] { backBtn, fwdBtn, reloadBtn, homeBtn }) { b.Location = new Point(x, y); x += b.Width + 4; }
         privBtn.Location = new Point(bar.Width - privBtn.Width - 14, y);
         int pw = privBtn.Left - 12 - (x + 8);
-        pill.SetBounds(x + 8, 7, Math.Max(100, pw), 54);
-        addr.SetBounds(26, 16, pill.Width - 52, 26);
+        pill.SetBounds(x + 8, 6, Math.Max(100, pw), 46);
+        addr.SetBounds(22, 12, pill.Width - 44, 24);
     }
-    void LayoutFoot() { status.SetBounds(16, 0, Math.Max(50, foot.Width - 32), foot.Height); }
+    void LayoutFoot() { status.SetBounds(14, 0, Math.Max(50, foot.Width - 32), foot.Height); if (Program.SigBottom) footCredit.Location = new Point(foot.Width - footCredit.Width - 12, 0); }
 
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)] struct RECT { public int left, top, right, bottom; }
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)] struct NCCALC { public RECT r0, r1, r2; public IntPtr pos; }
@@ -179,7 +181,7 @@ class BrowserForm : Form
                 long lp = m.LParam.ToInt64(); var pt = PointToClient(new Point((short)(lp & 0xffff), (short)((lp >> 16) & 0xffff)));
                 bool max = WindowState == FormWindowState.Maximized;
                 if (!max && pt.Y < 6) m.Result = (IntPtr)(pt.X < 8 ? 13 : pt.X > Width - 16 ? 14 : 12); // TOPLEFT/TOPRIGHT/TOP
-                else if (pt.Y < title.Height) m.Result = (IntPtr)2; // CAPTION: drag, double-click maximize, snap
+                else if (pt.Y < titleBar.Height) m.Result = (IntPtr)2; // CAPTION: drag, double-click maximize, snap
             }
             return;
         }
@@ -407,16 +409,16 @@ button:active{transform:translateY(4px);box-shadow:0 1px 0 #1368b0,inset 0 2px 2
             var ctr = PointToScreen(new Point(Width / 2 - 250, 20));
             int htCap = HitTestAt(ctr.X, ctr.Y);
             R("title bar blank area = HTCAPTION (drag/snap)", htCap == 2, "hit=" + htCap);
-            title.Max.PerformClick(); await Task.Delay(1200);
+            titleBar.Max.PerformClick(); await Task.Delay(1200);
             R("maximize button restores window", WindowState == FormWindowState.Normal, WindowState.ToString());
             Desk("10-normal-window.png");
             var tl = PointToScreen(new Point(60, 2)); int htTop = HitTestAt(tl.X, tl.Y);
             R("top edge = resize (HTTOP)", htTop == 12, "hit=" + htTop);
             Width = 900; Height = 640; await Task.Delay(800);
             R("resize works", Width == 900 && Cur().Width > 600, $"{Width}x{Height} webview {Cur().Width}");
-            title.Max.PerformClick(); await Task.Delay(1200);
+            titleBar.Max.PerformClick(); await Task.Delay(1200);
             R("maximize button maximizes", WindowState == FormWindowState.Maximized, WindowState.ToString());
-            title.Min.PerformClick(); await Task.Delay(1200);
+            titleBar.Min.PerformClick(); await Task.Delay(1200);
             R("minimize button", WindowState == FormWindowState.Minimized, WindowState.ToString());
             WindowState = FormWindowState.Maximized; await Task.Delay(1200);
             Desk("11-window-controls.png");
