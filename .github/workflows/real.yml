@@ -1,7 +1,7 @@
 name: real-tahmeel
 on: workflow_dispatch
 permissions:
-  contents: read
+  contents: write
 jobs:
   win:
     runs-on: windows-latest
@@ -55,16 +55,14 @@ jobs:
         run: |
           if (Select-String -Path proof\results.txt -Pattern '^FAIL') { throw "a test failed" }
           Get-FileHash out\Hilali.exe | Tee-Object proof\sha.txt
-  upload:
-    needs: win
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with: { name: exe, path: x }
-      - run: pip install mediafire
-      - env:
-          MF_PW: ${{ secrets.MF_PW }}
+      - name: Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          mv x/Hilali.exe Hilali-Windows-x64.exe; sha256sum Hilali-Windows-x64.exe; ls -l Hilali-Windows-x64.exe
-          python3 build/mf_up.py Hilali-Windows-x64.exe 2>&1 | sed "s/${MF_PW}/***/g"
+          Copy-Item out\Hilali.exe Hilali-Windows-x64.exe
+          $h = (Get-FileHash Hilali-Windows-x64.exe -Algorithm SHA256).Hash.ToLower()
+          "$h  Hilali-Windows-x64.exe" | Out-File -Encoding ascii Hilali-Windows-x64.exe.sha256
+          $res = Get-Content proof\results.txt -Raw
+          "Hilali for Windows 0.1.0 (first proof). Unsigned; Chromium (WebView2). All runner tests passed incl. real Tahmeel hand-off.`n`nsha256: $h`n`n$res" | Out-File -Encoding utf8 notes.md
+          gh release create "v0.1.0-proof-$env:GITHUB_RUN_NUMBER" Hilali-Windows-x64.exe Hilali-Windows-x64.exe.sha256 --title "Hilali for Windows 0.1.0 (proof)" --notes-file notes.md
