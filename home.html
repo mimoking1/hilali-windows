@@ -49,10 +49,10 @@ function post(o){try{window.chrome.webview.postMessage(o)}catch(e){}}
 function menu(x,y,i){cur=i;const m=document.getElementById('menu');m.style.left=Math.min(x,innerWidth-140)+'px';m.style.top=Math.min(y,innerHeight-90)+'px';m.classList.add('show')}
 function modal(i){cur=i;document.getElementById('menu').classList.remove('show');document.getElementById('mt').textContent=i<0?'إضافة موقع':'تعديل الموقع';document.getElementById('mn').value=i<0?'':T[i].n;document.getElementById('mu').value=i<0?'':T[i].u;document.getElementById('modal').classList.add('show');document.getElementById('mn').focus()}
 function render(){const el=document.getElementById('tiles');el.innerHTML='';
-T.forEach((t,i)=>{const a=document.createElement('a');a.className='t';a.href=t.u;a.dataset.i=i;a.title=t.n+' - '+t.u;
+T.forEach((t,i)=>{const a=document.createElement('a');a.className='t';a.href=t.u;a.dataset.i=i;
 const d=document.createElement('div');d.className='i '+cls[i%4];d.textContent=(t.n||'?').trim().charAt(0).toUpperCase();const s=document.createElement('span');s.textContent=t.n;a.appendChild(d);a.appendChild(s);
 a.addEventListener('contextmenu',e=>{e.preventDefault();menu(e.clientX,e.clientY,i)});el.appendChild(a)});
-if(T.length<12){const p=document.createElement('a');p.className='t plus';p.id='addtile';p.href='#';p.title='إضافة موقع';p.innerHTML="<div class='i'>+</div><span>إضافة</span>";p.addEventListener('click',e=>{e.preventDefault();modal(-1)});el.appendChild(p)}}
+if(T.length<12){const p=document.createElement('a');p.className='t plus';p.id='addtile';p.href='#';p.innerHTML="<div class='i'>+</div><span>إضافة</span>";p.addEventListener('click',e=>{e.preventDefault();modal(-1)});el.appendChild(p)}}
 document.getElementById('m-edit').addEventListener('click',()=>modal(cur));
 document.getElementById('m-del').addEventListener('click',()=>{document.getElementById('menu').classList.remove('show');post({t:'del',i:cur})});
 document.getElementById('msave').addEventListener('click',()=>{post({t:'save',i:cur,n:document.getElementById('mn').value,u:document.getElementById('mu').value});document.getElementById('modal').classList.remove('show')});
