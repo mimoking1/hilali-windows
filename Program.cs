@@ -76,7 +76,7 @@ class BrowserForm : Form
     readonly TabStrip strip = new TabStrip { Dock = DockStyle.Top, Height = 42 };
     readonly Panel body = new Panel { Dock = DockStyle.Fill, BackColor = Color.White };
     readonly GradPanel bar = new GradPanel { Dock = DockStyle.Top, Height = 58 };
-    readonly GradPanel foot = new GradPanel { Dock = DockStyle.Bottom, Height = 24, Shine = false };
+    readonly GradPanel foot = new GradPanel { Dock = DockStyle.Bottom, Height = 26, Shine = false };
     readonly Pill pill = new Pill();
     readonly TextBox addr = new TextBox { BorderStyle = BorderStyle.None, Font = new Font("Segoe UI", 11.5f), BackColor = Color.FromArgb(244, 250, 255) };
     readonly Label status = new Label { AutoSize = false, TextAlign = ContentAlignment.MiddleLeft, BackColor = Color.Transparent, Font = new Font("Segoe UI", 8.5f, FontStyle.Bold) };
@@ -105,7 +105,7 @@ class BrowserForm : Form
         status.ForeColor = pal.Ink;
         bar.Controls.AddRange(new Control[] { backBtn, fwdBtn, reloadBtn, homeBtn, pill, privBtn });
         pill.Controls.Add(addr);
-        foot.Controls.Add(status); if (Program.SigBottom) { footCredit.Pal = pal; footCredit.Width = 290; footCredit.Height = 24; footCredit.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold); foot.Controls.Add(footCredit); }
+        foot.Controls.Add(status); if (Program.SigBottom) { footCredit.Pal = pal; footCredit.Width = 290; footCredit.Height = 26; footCredit.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold); foot.Controls.Add(footCredit); footCredit.BringToFront(); }
         Controls.Add(body); Controls.Add(foot); Controls.Add(bar); Controls.Add(strip); Controls.Add(titleBar);
         titleBar.ShowCredit = !Program.SigBottom; titleBar.Ico = Icon; titleBar.Text = Text; titleBar.Arrange();
         TextChanged += (s, e) => { titleBar.Text = Text; titleBar.Invalidate(); };
@@ -154,7 +154,7 @@ class BrowserForm : Form
         pill.SetBounds(x + 8, 6, Math.Max(100, pw), 46);
         addr.SetBounds(22, 12, pill.Width - 44, 24);
     }
-    void LayoutFoot() { status.SetBounds(14, 0, Math.Max(50, foot.Width - 32), foot.Height); if (Program.SigBottom) footCredit.Location = new Point(foot.Width - footCredit.Width - 12, 0); }
+    void LayoutFoot() { status.SetBounds(14, 0, Math.Max(50, foot.Width - (Program.SigBottom ? 320 : 32)), foot.Height); if (Program.SigBottom) footCredit.Location = new Point(foot.Width - footCredit.Width - 12, 0); }
 
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)] struct RECT { public int left, top, right, bottom; }
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)] struct NCCALC { public RECT r0, r1, r2; public IntPtr pos; }
