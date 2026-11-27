@@ -1,7 +1,7 @@
 name: real-tahmeel
 on: workflow_dispatch
 permissions:
-  contents: write
+  contents: read
 jobs:
   win:
     runs-on: windows-latest
@@ -55,14 +55,3 @@ jobs:
         run: |
           if (Select-String -Path proof\results.txt -Pattern '^FAIL') { throw "a test failed" }
           Get-FileHash out\Hilali.exe | Tee-Object proof\sha.txt
-      - name: Release
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          Copy-Item out\Hilali.exe Hilali-Windows-x64.exe
-          $h = (Get-FileHash Hilali-Windows-x64.exe -Algorithm SHA256).Hash.ToLower()
-          "$h  Hilali-Windows-x64.exe" | Out-File -Encoding ascii Hilali-Windows-x64.exe.sha256
-          $res = Get-Content proof\results.txt -Raw
-          "Hilali for Windows 0.2.0 (first proof). Unsigned; Chromium (WebView2). All runner tests passed incl. real Tahmeel hand-off.`n`nsha256: $h`n`n$res" | Out-File -Encoding utf8 notes.md
-          gh release create "v0.2.0-proof-$env:GITHUB_RUN_NUMBER" Hilali-Windows-x64.exe Hilali-Windows-x64.exe.sha256 --title "Hilali for Windows 0.2.0 (proof, new UI)" --notes-file notes.md
