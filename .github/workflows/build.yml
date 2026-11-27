@@ -1,0 +1,27 @@
+name: build-proof
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  win:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish single-file exe
+        run: dotnet publish Hilali.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o out
+      - name: Selftest with screenshots
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force proof | Out-Null
+          Add-Type -AssemblyName System.Windows.Forms
+          $p = Start-Process -FilePath ".\out\Hilali.exe" -ArgumentList "--selftest","--out","$PWD\proof" -PassThru
+          $p | Wait-Process -Timeout 150 -ErrorAction SilentlyContinue
+          if (-not $p.HasExited) { $p.Kill(); "TIMEOUT" | Out-File proof\timeout.txt }
+          Get-ChildItem proof, out | Format-Table Name, Length
+          if (Test-Path proof\results.txt) { Get-Content proof\results.txt }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: proof, path: proof }
+      - uses: actions/upload-artifact@v4
+        with: { name: Hilali-exe-proof, path: out/Hilali.exe }
