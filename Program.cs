@@ -127,7 +127,7 @@ class BrowserForm : Form
     {
         priv = isPrivate;
         Text = priv ? "هلالي - Hilali (خاص)" : "هلالي - Hilali";
-        Width = 1180; Height = 760; StartPosition = FormStartPosition.CenterScreen; BackColor = pal.Bar2;
+        Width = 1180; Height = 760; StartPosition = FormStartPosition.CenterScreen;
         try { Icon = new Icon(System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("Hilali.hilali.ico") ?? Stream.Null); } catch { }
         userData = priv ? Path.Combine(Path.GetTempPath(), "hilali-private-" + Guid.NewGuid().ToString("N"))
                         : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Hilali", "profile");
