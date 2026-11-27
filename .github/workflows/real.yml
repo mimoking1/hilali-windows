@@ -51,9 +51,13 @@ jobs:
           Get-Content proof\srv.log
       - uses: actions/upload-artifact@v4
         if: always()
-        with: { name: proof-real-${{ matrix.sig }}, path: proof }
+        with:
+          name: proof-real-${{ matrix.sig }}
+          path: proof
       - uses: actions/upload-artifact@v4
-        with: { name: exe-${{ matrix.sig }}, path: out/Hilali.exe }
+        with:
+          name: exe-${{ matrix.sig }}
+          path: out/Hilali.exe
       - name: Gate
         shell: pwsh
         run: |
