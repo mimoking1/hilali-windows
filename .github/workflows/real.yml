@@ -29,7 +29,8 @@ jobs:
           "tahmeel exe: $($exe.FullName)" | Tee-Object -Append proof\install.txt
           if ($exe) { Start-Process $exe.FullName }
           Start-Sleep 20
-          try { $r = Invoke-WebRequest http://127.0.0.1:48917/ping -UseBasicParsing -TimeoutSec 3; "bridge status $($r.StatusCode)" } catch { "bridge answer: $($_.Exception.Message)" } | Tee-Object -Append proof\install.txt
+          $br = try { $r = Invoke-WebRequest http://127.0.0.1:48917/ping -UseBasicParsing -TimeoutSec 3; "bridge status $($r.StatusCode)" } catch { "bridge answer: $($_.Exception.Message)" }
+          $br | Tee-Object -Append proof\install.txt
           Desk "00-tahmeel-launched.png"
           New-Item -ItemType Directory -Force srv | Out-Null
           $bytes = New-Object byte[] 3000000; (New-Object Random).NextBytes($bytes); [IO.File]::WriteAllBytes("$PWD\srv\handoff.zip",$bytes)
