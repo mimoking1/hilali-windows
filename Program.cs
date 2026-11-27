@@ -71,7 +71,9 @@ static class Blocker
 class BrowserForm : Form
 {
     readonly bool priv;
-    readonly Palette pal;
+    Palette pal; bool night; string setPath;
+    readonly GlossButton modeBtn = new GlossButton { Width = 44, Height = 36, Primary = true };
+    public bool Night => night;
     readonly string userData;
     CoreWebView2Environment env;
     readonly TabStrip strip = new TabStrip { Dock = DockStyle.Top, Height = 42 };
@@ -123,19 +125,24 @@ class BrowserForm : Form
 
     public BrowserForm(bool isPrivate)
     {
-        priv = isPrivate; pal = priv ? Palette.Night : Palette.Day;
+        priv = isPrivate;
         Text = priv ? "هلالي - Hilali (خاص)" : "هلالي - Hilali";
         Width = 1180; Height = 760; StartPosition = FormStartPosition.CenterScreen; BackColor = pal.Bar2;
         try { Icon = new Icon(System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("Hilali.hilali.ico") ?? Stream.Null); } catch { }
         userData = priv ? Path.Combine(Path.GetTempPath(), "hilali-private-" + Guid.NewGuid().ToString("N"))
                         : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Hilali", "profile");
         scPath = priv ? Path.Combine(userData, "shortcuts.json") : Path.Combine(Path.GetDirectoryName(userData), "shortcuts.json"); LoadSc();
+        setPath = Path.Combine(Path.GetDirectoryName(userData), "settings.json");
+        if (!priv) { try { night = File.Exists(setPath) && File.ReadAllText(setPath).Contains("\"night\":true"); } catch { } }
+        pal = priv ? Palette.Night : night ? Palette.Midnight : Palette.Day; BackColor = pal.Bar2;
         strip.Pal = pal; bar.C1 = pal.Bar1; bar.C2 = pal.Bar2; foot.C1 = pal.Bar2; foot.C2 = pal.Strip1; pill.Pal = pal; titleBar.Pal = pal;
-        foreach (var b in new[] { backBtn, fwdBtn, reloadBtn, homeBtn, privBtn }) b.Pal = pal;
+        foreach (var b in new[] { backBtn, fwdBtn, reloadBtn, homeBtn, privBtn, modeBtn }) b.Pal = pal;
+        modeBtn.Font = new Font("Segoe UI Symbol", 13f, FontStyle.Bold); modeBtn.Text = night ? "☀" : "☾"; modeBtn.Visible = !priv;
+        addr.BackColor = pal.Dark ? Color.FromArgb(32, 41, 94) : Color.FromArgb(244, 250, 255); addr.ForeColor = pal.Dark ? Color.White : Color.Black;
         privBtn.Text = priv ? "● نافذة خاصة" : "نافذة خاصة";
         privBtn.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
         status.ForeColor = pal.Ink;
-        bar.Controls.AddRange(new Control[] { backBtn, fwdBtn, reloadBtn, homeBtn, pill, privBtn });
+        bar.Controls.AddRange(new Control[] { backBtn, fwdBtn, reloadBtn, homeBtn, pill, modeBtn, privBtn });
         pill.Controls.Add(addr);
         foot.Controls.Add(status); if (Program.SigBottom) { footCredit.Pal = pal; footCredit.Width = 240; footCredit.Height = 26; footCredit.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold); foot.Controls.Add(footCredit); footCredit.BringToFront(); }
         Controls.Add(body); Controls.Add(foot); Controls.Add(bar); Controls.Add(strip); Controls.Add(titleBar);
@@ -151,6 +158,7 @@ class BrowserForm : Form
         fwdBtn.Click += (s, e) => { if (Cur()?.CoreWebView2?.CanGoForward == true) Cur().CoreWebView2.GoForward(); };
         reloadBtn.Click += (s, e) => Cur()?.CoreWebView2?.Reload();
         homeBtn.Click += (s, e) => Cur()?.CoreWebView2?.NavigateToString(HomeHtml());
+        modeBtn.Click += (s, e) => ToggleNight();
         privBtn.Click += (s, e) => { if (!priv) new BrowserForm(true).Show(); };
         strip.NewReq += () => _ = NewTab(null);
         strip.Select += t => SelectTab(t);
@@ -184,8 +192,23 @@ class BrowserForm : Form
         foreach (var b in new[] { backBtn, fwdBtn, reloadBtn, homeBtn }) { b.Location = new Point(x, y); x += b.Width + 4; }
         privBtn.Location = new Point(bar.Width - privBtn.Width - 14, 12);
         int pw = privBtn.Left - 12 - (x + 8);
+        modeBtn.Location = new Point(privBtn.Left - modeBtn.Width - 8, 12);
+        if (!priv) pw -= modeBtn.Width + 8;
         pill.SetBounds(x + 8, 6, Math.Max(100, pw), 46);
         addr.SetBounds(22, 12, pill.Width - 44, 24);
+    }
+    void ToggleNight()
+    {
+        if (priv) return;
+        night = !night; pal = night ? Palette.Midnight : Palette.Day;
+        try { Directory.CreateDirectory(Path.GetDirectoryName(setPath)); File.WriteAllText(setPath, "{\"night\":" + (night ? "true" : "false") + "}"); } catch { }
+        BackColor = pal.Bar2; strip.Pal = pal; bar.C1 = pal.Bar1; bar.C2 = pal.Bar2; foot.C1 = pal.Bar2; foot.C2 = pal.Strip1; pill.Pal = pal; titleBar.Pal = pal; footCredit.Pal = pal;
+        foreach (var b in new[] { backBtn, fwdBtn, reloadBtn, homeBtn, privBtn, modeBtn }) b.Pal = pal;
+        modeBtn.Text = night ? "☀" : "☾";
+        addr.BackColor = pal.Dark ? Color.FromArgb(32, 41, 94) : Color.FromArgb(244, 250, 255); addr.ForeColor = pal.Dark ? Color.White : Color.Black;
+        status.ForeColor = pal.Ink; titleBar.Arrange();
+        foreach (Control c in new Control[] { strip, bar, foot, pill, titleBar, backBtn, fwdBtn, reloadBtn, homeBtn, privBtn, modeBtn, footCredit, titleBar.Credit, titleBar.Min, titleBar.Max, titleBar.Close }) c.Invalidate();
+        foreach (var t in strip.Tabs) { try { var src = t.View?.CoreWebView2?.Source ?? ""; if (!src.StartsWith("http")) t.View?.CoreWebView2?.NavigateToString(HomeHtml()); } catch { } }
     }
     void LayoutFoot() { status.SetBounds(14, 0, Math.Max(50, foot.Width - (Program.SigBottom ? 270 : 32)), foot.Height); if (Program.SigBottom) footCredit.Location = new Point(foot.Width - footCredit.Width - 12, 0); }
 
@@ -237,7 +260,7 @@ class BrowserForm : Form
         string moon = "";
         try { using var s = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("Hilali.crescent.png"); using var ms = new MemoryStream(); s.CopyTo(ms); moon = "data:image/png;base64," + Convert.ToBase64String(ms.ToArray()); } catch { }
         var tiles = System.Text.Json.JsonSerializer.Serialize(Sc.Select(x => new { n = x.N, u = x.U })).Replace("<", "\\u003c");
-        return HomeTpl.Replace("@@MOON@@", moon).Replace("@@TILES@@", tiles);
+        return HomeTpl.Replace("@@MODE@@", night ? "n" : "").Replace("@@MOON@@", moon).Replace("@@TILES@@", tiles);
     }
 
     static string HomeTpl => new StreamReader(System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("Hilali.home.html")).ReadToEnd();
@@ -359,8 +382,14 @@ class BrowserForm : Form
         Directory.CreateDirectory(Program.OutDir);
         WindowState = FormWindowState.Maximized; Activate(); await Task.Delay(3500);
         var names = await JS("Array.from(document.querySelectorAll('.t span')).map(x=>x.textContent).join(' , ')");
-        File.WriteAllText(Path.Combine(Program.OutDir, "homecheck.txt"), "tiles after restart: " + System.Text.RegularExpressions.Regex.Unescape(names));
-        Desk("20-after-restart.png");
+        File.WriteAllText(Path.Combine(Program.OutDir, "homecheck.txt"), "tiles after restart: " + System.Text.RegularExpressions.Regex.Unescape(names) + "\nnight after restart: " + night + "\npage is night: " + await JS("document.body.classList.contains('n')") + "\nchrome dark: " + pal.Dark + "\n");
+        Desk("20-after-restart-night.png");
+        var mp = PointToScreen(new Point(modeBtn.Left + modeBtn.Width / 2, bar.Top + modeBtn.Top + modeBtn.Height / 2));
+        SetCursorPos(mp.X, mp.Y); await Task.Delay(300);
+        mouse_event(0x0002, 0, 0, 0, IntPtr.Zero); mouse_event(0x0004, 0, 0, 0, IntPtr.Zero); await Task.Delay(2500);
+        if (night) { modeBtn.PerformClick(); await Task.Delay(2500); }
+        File.AppendAllText(Path.Combine(Program.OutDir, "homecheck.txt"), "back to day: " + (!night) + "\npage is day: " + (await JS("document.body.classList.contains('n')") == "false") + "\n");
+        Desk("21-back-to-day.png");
         Application.Exit();
     }
 
@@ -483,6 +512,33 @@ class BrowserForm : Form
             Desk("05-private.png");
             pf.Close();
             R("private profile deleted on close", true, "checked by FormClosed handler");
+
+            // ---- night mode ----
+            homeBtn.PerformClick(); await Task.Delay(2000);
+            R("day mode by default", !night && await JS("document.body.classList.contains('n')") == "false", "night=" + night);
+            var tcol = await JS("getComputedStyle(document.querySelector('.t')).backgroundImage.length>10");
+            R("shortcut tiles are glossy coloured 3D buttons (day)", tcol == "true" && await JS("getComputedStyle(document.querySelector('.t')).boxShadow.length>10") == "true", "");
+            Desk("30-day-tiles.png");
+            var mp = PointToScreen(new Point(modeBtn.Left + modeBtn.Width / 2, bar.Top + modeBtn.Top + modeBtn.Height / 2));
+            R("night-mode button is visible in the toolbar", modeBtn.Visible && modeBtn.Width > 0, modeBtn.Bounds.ToString());
+            SetCursorPos(mp.X, mp.Y); await Task.Delay(300);
+            mouse_event(0x0002, 0, 0, 0, IntPtr.Zero); mouse_event(0x0004, 0, 0, 0, IntPtr.Zero); await Task.Delay(2500);
+            bool realTog = night;
+            if (!night) { modeBtn.PerformClick(); await Task.Delay(2500); }
+            R(realTog ? "night button toggles night mode (REAL mouse click)" : "night button toggles night mode (programmatic click; real mouse missed)", night, "real=" + realTog);
+            R("chrome repainted dark (palette is midnight)", pal.Dark && BackColor == Palette.Midnight.Bar2, BackColor.ToString());
+            R("home page switched to night (dark sky)", await JS("document.body.classList.contains('n')") == "true", "");
+            Desk("31-night-home.png");
+            var rc2 = (await JS("(()=>{const r=document.querySelector('.t').getBoundingClientRect();return Math.round(r.left+r.width/2)+'|'+Math.round(r.top+r.height/2)})()")).Split('|');
+            await JS("document.querySelector('.t').dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:300,clientY:300}))"); await Task.Delay(400);
+            Desk("32-night-menu.png");
+            await JS("document.getElementById('m-edit').click()"); await Task.Delay(400);
+            Desk("33-night-dialog.png");
+            await JS("document.getElementById('mcancel').click()"); await Task.Delay(300);
+            R("settings saved to disk (night=true)", File.Exists(setPath) && File.ReadAllText(setPath).Contains("true"), setPath);
+            var navN = Wait(Cur(), 12000); Go("https://example.com"); await navN; await Task.Delay(1500);
+            Desk("34-night-webpage.png");
+            homeBtn.PerformClick(); await Task.Delay(1500);
         }
         catch (Exception ex) { R("selftest exception", false, ex.ToString()); }
         res.AppendLine("--- log ---"); res.Append(log);

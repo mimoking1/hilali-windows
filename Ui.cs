@@ -40,7 +40,7 @@ static class G
     public static void Quality(Graphics g) { g.SmoothingMode = SmoothingMode.AntiAlias; g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit; g.PixelOffsetMode = PixelOffsetMode.HighQuality; }
 }
 
-record Palette(Color Strip1, Color Strip2, Color Bar1, Color Bar2, Color Hi, Color Lo, Color Border, Color Ink)
+record Palette(Color Strip1, Color Strip2, Color Bar1, Color Bar2, Color Hi, Color Lo, Color Border, Color Ink, bool Dark = false)
 {
     public static Palette Day = new(
         ColorTranslator.FromHtml("#9ad9ff"), ColorTranslator.FromHtml("#4fb2f7"),
@@ -52,6 +52,11 @@ record Palette(Color Strip1, Color Strip2, Color Bar1, Color Bar2, Color Hi, Col
         ColorTranslator.FromHtml("#fbf8ff"), ColorTranslator.FromHtml("#dccfff"),
         ColorTranslator.FromHtml("#b99cff"), ColorTranslator.FromHtml("#6a43d8"),
         ColorTranslator.FromHtml("#5530b8"), ColorTranslator.FromHtml("#2a1760"));
+    public static Palette Midnight = new(
+        ColorTranslator.FromHtml("#34449a"), ColorTranslator.FromHtml("#121a48"),
+        ColorTranslator.FromHtml("#2a3880"), ColorTranslator.FromHtml("#161d50"),
+        ColorTranslator.FromHtml("#7a9bff"), ColorTranslator.FromHtml("#2c42c8"),
+        ColorTranslator.FromHtml("#8aa0ff"), ColorTranslator.FromHtml("#eaf0ff"), true);
 }
 
 class GradPanel : Panel
@@ -90,13 +95,14 @@ class GlossButton : Control
         if (down) r.Offset(0, 2);
         Color top, bot, txt; 
         if (Primary) { top = Pal.Hi; bot = Pal.Lo; txt = Color.White; }
+        else if (Pal.Dark) { top = ColorTranslator.FromHtml("#4c5db4"); bot = ColorTranslator.FromHtml("#232c70"); txt = Pal.Ink; }
         else { top = Color.White; bot = Color.FromArgb(205, 232, 252); txt = Pal.Ink; }
         if (hover) { top = ControlPaint.Light(top, 0.25f); bot = ControlPaint.Light(bot, 0.15f); }
         using (var p = G.RR(r, rad))
         {
             using (var b = new LinearGradientBrush(r, top, bot, 90f)) g.FillPath(b, p);
             G.Gloss(g, r, rad, Primary ? 140 : 190, 10);
-            using (var pen = new Pen(Primary ? Pal.Border : Color.FromArgb(150, 90, 160, 220), 1.4f)) g.DrawPath(pen, p);
+            using (var pen = new Pen(Primary || Pal.Dark ? Pal.Border : Color.FromArgb(150, 90, 160, 220), 1.4f)) g.DrawPath(pen, p);
         }
         var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap };
         var tr = new RectangleF(r.X, r.Y, r.Width, r.Height);
@@ -114,11 +120,11 @@ class Badge : Control
         var g = e.Graphics; G.Quality(g);
         var r = new RectangleF(2, 1, Width - 5, Height - 4);
         using var p = G.RR(r, r.Height / 2);
-        using (var b = new LinearGradientBrush(r, Color.White, Color.FromArgb(200, 232, 255), 90f)) g.FillPath(b, p);
-        G.Gloss(g, r, r.Height / 2, 200, 20);
+        using (var b = new LinearGradientBrush(r, Pal.Dark ? ColorTranslator.FromHtml("#5a6cc8") : Color.White, Pal.Dark ? ColorTranslator.FromHtml("#252f78") : Color.FromArgb(200, 232, 255), 90f)) g.FillPath(b, p);
+        G.Gloss(g, r, r.Height / 2, Pal.Dark ? 90 : 200, 20);
         using (var pen = new Pen(Color.FromArgb(160, 80, 150, 215), 1.2f)) g.DrawPath(pen, p);
         var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap };
-        using var tb = new SolidBrush(Color.Black); g.DrawString(Text, Font, tb, r, sf);
+        using var tb = new SolidBrush(Pal.Dark ? Color.White : Color.Black); g.DrawString(Text, Font, tb, r, sf);
     }
 }
 
@@ -133,7 +139,7 @@ class Pill : Panel
         float rad = r.Height / 2;
         G.Shadow(g, r, rad, 4, 26);
         using var p = G.RR(r, rad);
-        using (var b = new LinearGradientBrush(r, Color.FromArgb(232, 243, 252), Color.White, 90f)) g.FillPath(b, p);
+        using (var b = new LinearGradientBrush(r, Pal.Dark ? ColorTranslator.FromHtml("#141b46") : Color.FromArgb(232, 243, 252), Pal.Dark ? ColorTranslator.FromHtml("#262f6c") : Color.White, 90f)) g.FillPath(b, p);
         using (var pen = new Pen(Pal.Border, 1.8f)) g.DrawPath(pen, p);
     }
 }
@@ -174,13 +180,13 @@ class TabStrip : Control
             if (sel)
             {
                 using (var sh = G.TopRR(new RectangleF(rf.X - 2, rf.Y - 1, rf.Width + 4, rf.Height), 14)) using (var sb = new SolidBrush(Color.FromArgb(40, 10, 50, 110))) g.FillPath(sb, sh);
-                using var b = new LinearGradientBrush(rf, Color.White, Pal.Bar1, 90f); g.FillPath(b, path);
+                using var b = new LinearGradientBrush(rf, Pal.Dark ? ColorTranslator.FromHtml("#5566bd") : Color.White, Pal.Bar1, 90f); g.FillPath(b, path);
                 G.Gloss(g, rf, 12, 160, 10);
             }
             else
             {
-                var c1 = t == hot ? Color.FromArgb(235, 255, 255, 255) : Color.FromArgb(150, 255, 255, 255);
-                using var b = new LinearGradientBrush(rf, c1, Color.FromArgb(60, 255, 255, 255), 90f); g.FillPath(b, path);
+                var c1 = Pal.Dark ? Color.FromArgb(t == hot ? 90 : 45, 255, 255, 255) : t == hot ? Color.FromArgb(235, 255, 255, 255) : Color.FromArgb(150, 255, 255, 255);
+                using var b = new LinearGradientBrush(rf, c1, Color.FromArgb(Pal.Dark ? 12 : 60, 255, 255, 255), 90f); g.FillPath(b, path);
             }
             using (var pen = new Pen(Color.FromArgb(sel ? 190 : 110, Pal.Border), 1.2f)) g.DrawPath(pen, path);
             var tr = new RectangleF(r.X + 12, r.Y + 6, r.Width - 46, r.Height - 6);
@@ -195,7 +201,7 @@ class TabStrip : Control
         }
         var pr = new RectangleF(plus.X, plus.Y, plus.Width, plus.Height);
         G.Shadow(g, pr, 12, 3, 24);
-        using (var p = G.RR(pr, 12)) { using var b = new LinearGradientBrush(pr, hotPlus ? Color.White : Color.FromArgb(240, 250, 255), Pal.Hi, 90f); g.FillPath(b, p); G.Gloss(g, pr, 12, 190, 10); using var pen = new Pen(Pal.Border, 1.3f); g.DrawPath(pen, p); }
+        using (var p = G.RR(pr, 12)) { using var b = new LinearGradientBrush(pr, hotPlus ? Color.White : (Pal.Dark ? ColorTranslator.FromHtml("#8aa6ff") : Color.FromArgb(240, 250, 255)), Pal.Hi, 90f); g.FillPath(b, p); G.Gloss(g, pr, 12, 190, 10); using var pen = new Pen(Pal.Border, 1.3f); g.DrawPath(pen, p); }
         using (var pen = new Pen(Pal.Ink, 2.2f)) { g.DrawLine(pen, pr.X + 8, pr.Y + 13, pr.Right - 8, pr.Y + 13); g.DrawLine(pen, pr.X + 15, pr.Y + 6, pr.X + 15, pr.Bottom - 6); }
     }
 }
@@ -254,7 +260,7 @@ class TitleBar : Control
     protected override void OnPaint(PaintEventArgs e)
     {
         var g = e.Graphics; G.Quality(g);
-        using (var b = new LinearGradientBrush(ClientRectangle, ControlPaint.LightLight(Pal.Strip1), Pal.Strip1, 90f)) g.FillRectangle(b, ClientRectangle);
+        using (var b = new LinearGradientBrush(ClientRectangle, Pal.Dark ? ColorTranslator.FromHtml("#3f51ae") : ControlPaint.LightLight(Pal.Strip1), Pal.Strip1, 90f)) g.FillRectangle(b, ClientRectangle);
         using (var p = new Pen(Color.FromArgb(200, 255, 255, 255))) g.DrawLine(p, 0, 0, Width, 0);
         int x = 12;
         if (Ico != null) { g.DrawIcon(Ico, new Rectangle(x, (Height - 18) / 2, 18, 18)); x += 28; }

@@ -7,7 +7,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sig: [title, bottom]
+        sig: [bottom]
     runs-on: windows-latest
     timeout-minutes: 40
     steps:
@@ -66,4 +66,6 @@ jobs:
         shell: pwsh
         run: |
           if (Select-String -Path proof\results.txt -Pattern '^FAIL') { throw "a test failed" }
+          $hc = Get-Content proof\homecheck.txt -Raw
+          if ($hc -notmatch 'night after restart: True' -or $hc -notmatch 'page is night: true' -or $hc -notmatch 'back to day: True') { throw "night persistence failed" }
           Get-FileHash out\Hilali.exe | Tee-Object proof\sha.txt

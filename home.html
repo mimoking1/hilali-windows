@@ -14,14 +14,19 @@ input{width:min(430px,50vw);padding:min(10px,1.4vh) 16px;border:0;background:tra
 button{position:relative;padding:min(10px,1.4vh) 28px;border:0;border-radius:30px;font-size:16px;font-weight:700;color:#fff;cursor:pointer;background:linear-gradient(#7fdcff,#1d8fe6);box-shadow:0 4px 0 #1368b0,0 7px 10px rgba(10,60,120,.4),inset 0 2px 2px rgba(255,255,255,.7);text-shadow:0 2px 2px rgba(0,50,100,.45);font-family:inherit}
 button:active{transform:translateY(3px);box-shadow:0 1px 0 #1368b0,inset 0 2px 2px rgba(255,255,255,.5)}
 .tiles{display:flex;gap:12px;margin-top:3.5vh;flex-wrap:wrap;justify-content:center;max-width:620px}
-.t{width:66px;padding:8px 3px 6px;text-align:center;border-radius:14px;text-decoration:none;color:#0d3558;font-weight:700;font-size:11px;line-height:1.25;background:linear-gradient(#fff,#d9efff);border:1.5px solid #9bd0f5;box-shadow:0 4px 0 #7cb8e6,0 8px 12px rgba(10,70,140,.28),inset 0 2px 2px #fff;transition:transform .15s;cursor:pointer;overflow:hidden}
-.t span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.t:hover{transform:translateY(-3px)}
-.i{width:28px;height:28px;margin:0 auto 4px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;color:#fff;background:linear-gradient(#7fdcff,#1d8fe6);box-shadow:inset 0 2px 2px rgba(255,255,255,.7),0 2px 0 #1368b0;text-shadow:0 1px 2px rgba(0,50,100,.5)}
-.i.g{background:linear-gradient(#a6f5b6,#27b45a);box-shadow:inset 0 2px 2px rgba(255,255,255,.7),0 2px 0 #17803d}
-.i.o{background:linear-gradient(#ffd98a,#f39a1c);box-shadow:inset 0 2px 2px rgba(255,255,255,.7),0 2px 0 #b86d08}
-.i.p{background:linear-gradient(#e2b8ff,#9a4ee0);box-shadow:inset 0 2px 2px rgba(255,255,255,.7),0 2px 0 #6a2ba8}
-.plus .i{background:linear-gradient(#d9efff,#9bd0f5);color:#1d5d95;box-shadow:inset 0 2px 2px #fff,0 2px 0 #7cb8e6;text-shadow:none;font-size:20px}
+.t{--a:#7fdcff;--b:#1d8fe6;--d:#1368b0;position:relative;width:70px;height:78px;padding:9px 3px 6px;text-align:center;border-radius:22px 22px 18px 18px;text-decoration:none;color:#fff;font-weight:800;font-size:11px;line-height:1.25;background:linear-gradient(180deg,var(--a),var(--b));border:1.5px solid rgba(255,255,255,.55);box-shadow:0 6px 0 var(--d),0 12px 16px rgba(10,60,120,.4),inset 0 2px 2px rgba(255,255,255,.8),inset 0 -6px 8px rgba(0,0,0,.12);text-shadow:0 1px 2px rgba(0,30,70,.55);transition:transform .15s,box-shadow .15s;cursor:pointer;overflow:hidden}
+.t:before{content:'';position:absolute;left:6%;right:6%;top:2px;height:40%;border-radius:20px 20px 40px 40px;background:linear-gradient(rgba(255,255,255,.65),rgba(255,255,255,.05));pointer-events:none}
+.t span{display:block;position:relative;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t:hover{transform:translateY(-4px);box-shadow:0 10px 0 var(--d),0 16px 20px rgba(10,60,120,.4),inset 0 2px 2px rgba(255,255,255,.8)}
+.t:active{transform:translateY(4px);box-shadow:0 2px 0 var(--d),inset 0 2px 2px rgba(255,255,255,.6)}
+.i{position:relative;width:34px;height:34px;margin:0 auto 5px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:var(--d);background:linear-gradient(#fff,rgba(255,255,255,.78));box-shadow:0 3px 0 rgba(0,0,0,.2),inset 0 -3px 5px rgba(0,0,0,.1);text-shadow:none}
+.t.g{--a:#8ef0a4;--b:#1fae52;--d:#127a38}
+.t.o{--a:#ffd27a;--b:#f08a0f;--d:#a95f05}
+.t.p{--a:#e0b0ff;--b:#8f45dd;--d:#62289f}
+.t.k{--a:#ff9fc4;--b:#e0356f;--d:#9c1e4b}
+.t.c2{--a:#7ff0e6;--b:#12a9a0;--d:#0a7771}
+.plus{--a:#e9f6ff;--b:#a8d4f5;--d:#74aad6;color:#1d5d95;text-shadow:none}
+.plus .i{background:linear-gradient(#7fdcff,#1d8fe6);color:#fff;font-size:22px;box-shadow:0 3px 0 #1368b0,inset 0 2px 2px rgba(255,255,255,.7)}
 .c{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);padding:6px 20px;border-radius:30px;font-size:13px;font-weight:700;color:#000;direction:ltr;background:linear-gradient(#fff,#d6ecff);border:1.5px solid #8cc6f0;box-shadow:0 3px 0 #7cb8e6,0 6px 10px rgba(10,70,140,.25)}
 #menu{display:none;position:fixed;z-index:20;min-width:120px;background:linear-gradient(#fff,#e3f3ff);border:1.5px solid #7cb8e6;border-radius:12px;padding:4px;box-shadow:0 5px 0 #7cb8e6,0 10px 16px rgba(10,70,140,.35)}
 #menu.show{display:block}
@@ -35,7 +40,23 @@ button:active{transform:translateY(3px);box-shadow:0 1px 0 #1368b0,inset 0 2px 2
 #box .r{display:flex;gap:8px;justify-content:flex-start;margin-top:6px}
 #box button{padding:7px 20px;font-size:14px}
 #box button.x{background:linear-gradient(#fff,#d6ecff);color:#0d3558;text-shadow:none;box-shadow:0 3px 0 #9bd0f5,inset 0 2px 2px #fff}
-</style></head><body>
+body.n{color:#eaf0ff;background:radial-gradient(ellipse at 20% 15%,rgba(120,140,255,.28) 0,rgba(0,0,0,0) 40%),radial-gradient(ellipse at 85% 80%,rgba(90,60,200,.35) 0,rgba(0,0,0,0) 45%),linear-gradient(180deg,#0a1034 0%,#141c55 55%,#232c78 100%)}
+body.n:before{content:'';position:fixed;inset:0;z-index:0;background-image:radial-gradient(2px 2px at 12% 18%,#fff,transparent),radial-gradient(1.5px 1.5px at 30% 60%,#cfe,transparent),radial-gradient(2px 2px at 55% 12%,#fff,transparent),radial-gradient(1.5px 1.5px at 72% 40%,#fff,transparent),radial-gradient(2px 2px at 88% 22%,#dde,transparent),radial-gradient(1.5px 1.5px at 8% 80%,#fff,transparent),radial-gradient(2px 2px at 64% 85%,#fff,transparent),radial-gradient(1.5px 1.5px at 92% 70%,#cde,transparent),radial-gradient(1.5px 1.5px at 42% 30%,#fff,transparent)}
+body.n .cloud{background:rgba(120,140,255,.12);box-shadow:none}
+body.n .moon{filter:drop-shadow(0 0 22px rgba(255,236,160,.9)) drop-shadow(0 10px 12px rgba(0,0,30,.5))}
+body.n h1{background:linear-gradient(180deg,#bcd0ff,#6f8cff);-webkit-background-clip:text;filter:drop-shadow(0 3px 0 #28348f) drop-shadow(0 8px 10px rgba(0,0,30,.6))}
+body.n .sub{color:#b7c4ff}
+body.n form{background:linear-gradient(#232d6e,#141b4a);border-color:#6f8cff;box-shadow:0 6px 0 #2c3aa0,0 14px 20px rgba(0,0,30,.6),inset 0 3px 6px rgba(255,255,255,.12)}
+body.n input{color:#fff}
+body.n form button{background:linear-gradient(#8aa6ff,#2c42c8);box-shadow:0 4px 0 #1b2a8a,0 7px 10px rgba(0,0,30,.6),inset 0 2px 2px rgba(255,255,255,.5)}
+body.n .t{border-color:rgba(255,255,255,.35);box-shadow:0 6px 0 var(--d),0 12px 16px rgba(0,0,30,.6),inset 0 2px 2px rgba(255,255,255,.5),inset 0 -6px 8px rgba(0,0,0,.2)}
+body.n .plus{--a:#5a6cc8;--b:#262f78;--d:#141a4a;color:#dfe6ff}
+body.n .c{color:#fff;background:linear-gradient(#4c5db4,#232c70);border-color:#8aa0ff;box-shadow:0 3px 0 #141a4a,0 6px 10px rgba(0,0,30,.5)}
+body.n #menu,body.n #box{background:linear-gradient(#2a3580,#171e56);border-color:#8aa0ff;color:#fff;box-shadow:0 6px 0 #0f1440,0 12px 20px rgba(0,0,30,.6)}
+body.n #box input{background:#0f1440;color:#fff;border-color:#5a6cc8}
+body.n #box button.x{background:linear-gradient(#4c5db4,#232c70);color:#fff;box-shadow:0 3px 0 #0f1440}
+body.n #modal{background:rgba(0,0,20,.55)}
+</style></head><body class='@@MODE@@'>
 <div class='cloud' style='width:220px;height:60px;top:12%;right:8%'></div><div class='cloud' style='width:160px;height:44px;top:26%;left:6%'></div><div class='cloud' style='width:260px;height:64px;bottom:14%;left:12%'></div>
 <div class='moon'></div><h1>هلالي</h1><div class='sub'>متصفح خفيف وخاص، بدون إعلانات وبدون تتبع</div>
 <form action='https://duckduckgo.com/' method='get'><input name='q' placeholder='ابحث أو اكتب عنوان' autofocus><button>بحث</button></form>
@@ -44,13 +65,13 @@ button:active{transform:translateY(3px);box-shadow:0 1px 0 #1368b0,inset 0 2px 2
 <div id='menu'><div id='m-edit'>تعديل</div><div id='m-del'>حذف</div></div>
 <div id='modal'><div id='box'><h3 id='mt'>إضافة موقع</h3><input id='mn' placeholder='الاسم'><input id='mu' placeholder='https://example.com'><div class='r'><button id='msave'>حفظ</button><button class='x' id='mcancel'>إلغاء</button></div></div></div>
 <script>
-const T=@@TILES@@;const cls=['','g','o','p'];let cur=-1;
+const T=@@TILES@@;const cls=['','g','o','p','k','c2'];let cur=-1;
 function post(o){try{window.chrome.webview.postMessage(o)}catch(e){}}
 function menu(x,y,i){cur=i;const m=document.getElementById('menu');m.style.left=Math.min(x,innerWidth-140)+'px';m.style.top=Math.min(y,innerHeight-90)+'px';m.classList.add('show')}
 function modal(i){cur=i;document.getElementById('menu').classList.remove('show');document.getElementById('mt').textContent=i<0?'إضافة موقع':'تعديل الموقع';document.getElementById('mn').value=i<0?'':T[i].n;document.getElementById('mu').value=i<0?'':T[i].u;document.getElementById('modal').classList.add('show');document.getElementById('mn').focus()}
 function render(){const el=document.getElementById('tiles');el.innerHTML='';
-T.forEach((t,i)=>{const a=document.createElement('a');a.className='t';a.href=t.u;a.dataset.i=i;
-const d=document.createElement('div');d.className='i '+cls[i%4];d.textContent=(t.n||'?').trim().charAt(0).toUpperCase();const s=document.createElement('span');s.textContent=t.n;a.appendChild(d);a.appendChild(s);
+T.forEach((t,i)=>{const a=document.createElement('a');a.className='t '+cls[i%6];a.href=t.u;a.dataset.i=i;
+const d=document.createElement('div');d.className='i';d.textContent=(t.n||'?').trim().charAt(0).toUpperCase();const s=document.createElement('span');s.textContent=t.n;a.appendChild(d);a.appendChild(s);
 a.addEventListener('contextmenu',e=>{e.preventDefault();menu(e.clientX,e.clientY,i)});el.appendChild(a)});
 if(T.length<12){const p=document.createElement('a');p.className='t plus';p.id='addtile';p.href='#';p.innerHTML="<div class='i'>+</div><span>إضافة</span>";p.addEventListener('click',e=>{e.preventDefault();modal(-1)});el.appendChild(p)}}
 document.getElementById('m-edit').addEventListener('click',()=>modal(cur));
