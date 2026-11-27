@@ -243,7 +243,7 @@ class TitleBar : Control
     public void Arrange()
     {
         int bw = 48; Close.SetBounds(Width - bw, 0, bw, Height); Max.SetBounds(Width - 2 * bw, 0, bw, Height); Min.SetBounds(Width - 3 * bw, 0, bw, Height);
-        Credit.Visible = ShowCredit; Credit.Width = 300; Credit.Font = new Font("Segoe UI", 9f, FontStyle.Bold); Credit.Height = 29; Credit.Location = new Point(Math.Max(300, (Width - Credit.Width) / 2), (Height - 29) / 2);
+        Credit.Visible = ShowCredit; Credit.Width = 248; Credit.Font = new Font("Segoe UI", 9f, FontStyle.Bold); Credit.Height = 29; Credit.Location = new Point(Math.Max(300, (Width - Credit.Width) / 2), (Height - 29) / 2);
         Min.Pal = Max.Pal = Close.Pal = Pal; Credit.Pal = Pal;
     }
     protected override void WndProc(ref Message m)
