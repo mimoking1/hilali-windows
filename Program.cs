@@ -79,7 +79,7 @@ class BrowserForm : Form
     readonly Pill pill = new Pill();
     readonly TextBox addr = new TextBox { BorderStyle = BorderStyle.None, Font = new Font("Segoe UI", 12.5f), BackColor = Color.FromArgb(244, 250, 255) };
     readonly Label status = new Label { AutoSize = false, TextAlign = ContentAlignment.MiddleLeft, BackColor = Color.Transparent, Font = new Font("Segoe UI", 9.5f, FontStyle.Bold) };
-    readonly Badge credit = new Badge { Width = 330, Text = "Directed by Mohamed Sayed · محمد سيد" };
+    readonly TitleBar title = new TitleBar { Dock = DockStyle.Top, Height = 42 };
     readonly GlossButton backBtn = new GlossButton { Text = "◀", Width = 52, Height = 50 };
     readonly GlossButton fwdBtn = new GlossButton { Text = "▶", Width = 52, Height = 50 };
     readonly GlossButton reloadBtn = new GlossButton { Text = "⟳", Width = 52, Height = 50 };
@@ -96,17 +96,23 @@ class BrowserForm : Form
         try { Icon = new Icon(System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("Hilali.hilali.ico") ?? Stream.Null); } catch { }
         userData = priv ? Path.Combine(Path.GetTempPath(), "hilali-private-" + Guid.NewGuid().ToString("N"))
                         : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Hilali", "profile");
-        strip.Pal = pal; bar.C1 = pal.Bar1; bar.C2 = pal.Bar2; foot.C1 = pal.Bar2; foot.C2 = pal.Strip1; pill.Pal = pal; credit.Pal = pal;
+        strip.Pal = pal; bar.C1 = pal.Bar1; bar.C2 = pal.Bar2; foot.C1 = pal.Bar2; foot.C2 = pal.Strip1; pill.Pal = pal; title.Pal = pal;
         foreach (var b in new[] { backBtn, fwdBtn, reloadBtn, homeBtn, privBtn }) b.Pal = pal;
         privBtn.Text = priv ? "● نافذة خاصة" : "نافذة خاصة";
         privBtn.Font = new Font("Segoe UI", 11f, FontStyle.Bold);
         status.ForeColor = pal.Ink;
         bar.Controls.AddRange(new Control[] { backBtn, fwdBtn, reloadBtn, homeBtn, pill, privBtn });
         pill.Controls.Add(addr);
-        foot.Controls.Add(status); strip.Controls.Add(credit); strip.Reserve = 350; strip.Resize += (s2, e2) => LayoutStrip();
-        Controls.Add(body); Controls.Add(foot); Controls.Add(bar); Controls.Add(strip);
+        foot.Controls.Add(status);
+        Controls.Add(body); Controls.Add(foot); Controls.Add(bar); Controls.Add(strip); Controls.Add(title);
+        title.Ico = Icon; title.Text = Text; title.Arrange();
+        TextChanged += (s, e) => { title.Text = Text; title.Invalidate(); };
+        title.Min.Click += (s, e) => WindowState = FormWindowState.Minimized;
+        title.Max.Click += (s, e) => WindowState = WindowState == FormWindowState.Maximized ? FormWindowState.Normal : FormWindowState.Maximized;
+        title.Close.Click += (s, e) => Close();
+        Resize += (s, e) => { title.Max.Restored = WindowState == FormWindowState.Maximized; title.Max.Invalidate(); };
         bar.Resize += (s, e) => LayoutBar(); foot.Resize += (s, e) => LayoutFoot();
-        LayoutBar(); LayoutFoot(); LayoutStrip();
+        LayoutBar(); LayoutFoot();
         backBtn.Click += (s, e) => { if (Cur()?.CoreWebView2?.CanGoBack == true) Cur().CoreWebView2.GoBack(); };
         fwdBtn.Click += (s, e) => { if (Cur()?.CoreWebView2?.CanGoForward == true) Cur().CoreWebView2.GoForward(); };
         reloadBtn.Click += (s, e) => Cur()?.CoreWebView2?.Reload();
@@ -146,8 +152,39 @@ class BrowserForm : Form
         pill.SetBounds(x + 8, 7, Math.Max(100, pw), 54);
         addr.SetBounds(26, 16, pill.Width - 52, 26);
     }
-    void LayoutStrip() { credit.Height = 34; credit.Location = new Point(strip.Width - credit.Width - 14, 8); }
     void LayoutFoot() { status.SetBounds(16, 0, Math.Max(50, foot.Width - 32), foot.Height); }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)] struct RECT { public int left, top, right, bottom; }
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)] struct NCCALC { public RECT r0, r1, r2; public IntPtr pos; }
+    [System.Runtime.InteropServices.DllImport("user32.dll")] static extern int GetSystemMetrics(int n);
+    [System.Runtime.InteropServices.DllImport("user32.dll")] static extern IntPtr SendMessage(IntPtr h, int msg, IntPtr w, IntPtr l);
+    public int HitTestAt(int sx, int sy) => (int)SendMessage(Handle, 0x84, IntPtr.Zero, (IntPtr)((sy << 16) | (sx & 0xffff)));
+    protected override void WndProc(ref Message m)
+    {
+        if (m.Msg == 0x83 && m.WParam != IntPtr.Zero)
+        {
+            var p = System.Runtime.InteropServices.Marshal.PtrToStructure<NCCALC>(m.LParam);
+            int top = p.r0.top;
+            base.WndProc(ref m);
+            p = System.Runtime.InteropServices.Marshal.PtrToStructure<NCCALC>(m.LParam);
+            p.r0.top = top + (WindowState == FormWindowState.Maximized ? GetSystemMetrics(33) + GetSystemMetrics(92) : 0);
+            System.Runtime.InteropServices.Marshal.StructureToPtr(p, m.LParam, false);
+            m.Result = IntPtr.Zero; return;
+        }
+        if (m.Msg == 0x84)
+        {
+            base.WndProc(ref m);
+            if ((int)m.Result == 1)
+            {
+                long lp = m.LParam.ToInt64(); var pt = PointToClient(new Point((short)(lp & 0xffff), (short)((lp >> 16) & 0xffff)));
+                bool max = WindowState == FormWindowState.Maximized;
+                if (!max && pt.Y < 6) m.Result = (IntPtr)(pt.X < 8 ? 13 : pt.X > Width - 16 ? 14 : 12); // TOPLEFT/TOPRIGHT/TOP
+                else if (pt.Y < title.Height) m.Result = (IntPtr)2; // CAPTION: drag, double-click maximize, snap
+            }
+            return;
+        }
+        base.WndProc(ref m);
+    }
 
     WebView2 Cur() => strip.Selected?.View;
     void SelectTab(TabItem t)
@@ -365,6 +402,24 @@ button:active{transform:translateY(4px);box-shadow:0 1px 0 #1368b0,inset 0 2px 2
             SelectTab(first); await Task.Delay(800);
             R("tab switch", strip.Selected == first && Cur().Visible, first.Title);
             Desk("09-tab-switch.png");
+
+            // window controls
+            var ctr = PointToScreen(new Point(Width / 2 - 250, 20));
+            int htCap = HitTestAt(ctr.X, ctr.Y);
+            R("title bar blank area = HTCAPTION (drag/snap)", htCap == 2, "hit=" + htCap);
+            title.Max.PerformClick(); await Task.Delay(1200);
+            R("maximize button restores window", WindowState == FormWindowState.Normal, WindowState.ToString());
+            Desk("10-normal-window.png");
+            var tl = PointToScreen(new Point(60, 2)); int htTop = HitTestAt(tl.X, tl.Y);
+            R("top edge = resize (HTTOP)", htTop == 12, "hit=" + htTop);
+            Width = 900; Height = 640; await Task.Delay(800);
+            R("resize works", Width == 900 && Cur().Width > 600, $"{Width}x{Height} webview {Cur().Width}");
+            title.Max.PerformClick(); await Task.Delay(1200);
+            R("maximize button maximizes", WindowState == FormWindowState.Maximized, WindowState.ToString());
+            title.Min.PerformClick(); await Task.Delay(1200);
+            R("minimize button", WindowState == FormWindowState.Minimized, WindowState.ToString());
+            WindowState = FormWindowState.Maximized; await Task.Delay(1200);
+            Desk("11-window-controls.png");
 
             var pf = new BrowserForm(true); pf.Show(); pf.WindowState = FormWindowState.Maximized; pf.Activate(); await Task.Delay(7000);
             R("private window opens (temp profile)", pf.Visible && pf.Text.Contains("خاص"), pf.Text);

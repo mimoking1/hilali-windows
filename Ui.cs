@@ -199,3 +199,67 @@ class TabStrip : Control
         using (var pen = new Pen(Pal.Ink, 2.2f)) { g.DrawLine(pen, pr.X + 10, pr.Y + 14, pr.Right - 10, pr.Y + 14); g.DrawLine(pen, pr.X + 17, pr.Y + 7, pr.X + 17, pr.Bottom - 7); }
     }
 }
+
+class CapButton : Control
+{
+    public int Kind; // 0 min, 1 max/restore, 2 close
+    public bool Restored; public Palette Pal = Palette.Day; bool hover, down;
+    public CapButton() { SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true); Cursor = Cursors.Default; }
+    protected override void OnMouseEnter(EventArgs e) { hover = true; Invalidate(); base.OnMouseEnter(e); }
+    protected override void OnMouseLeave(EventArgs e) { hover = false; down = false; Invalidate(); base.OnMouseLeave(e); }
+    protected override void OnMouseDown(MouseEventArgs e) { down = true; Invalidate(); base.OnMouseDown(e); }
+    protected override void OnMouseUp(MouseEventArgs e) { down = false; Invalidate(); base.OnMouseUp(e); }
+    public void PerformClick() => OnClick(EventArgs.Empty);
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        var g = e.Graphics; G.Quality(g);
+        Color bg = Color.Transparent, fg = Pal.Ink;
+        if (hover) { if (Kind == 2) { bg = Color.FromArgb(down ? 190 : 232, 17, 35); fg = Color.White; } else bg = Color.FromArgb(down ? 140 : 110, 255, 255, 255); }
+        if (bg != Color.Transparent) using (var b = new SolidBrush(bg)) g.FillRectangle(b, ClientRectangle);
+        using var pen = new Pen(fg, 1.6f);
+        float cx = Width / 2f, cy = Height / 2f;
+        if (Kind == 0) g.DrawLine(pen, cx - 5, cy + 0.5f, cx + 5, cy + 0.5f);
+        else if (Kind == 1)
+        {
+            if (!Restored) g.DrawRectangle(pen, cx - 5, cy - 5, 10, 10);
+            else { g.DrawRectangle(pen, cx - 5, cy - 2, 8, 8); g.DrawLine(pen, cx - 2, cy - 5, cx + 5, cy - 5); g.DrawLine(pen, cx + 5, cy - 5, cx + 5, cy + 3); g.DrawLine(pen, cx - 2, cy - 5, cx - 2, cy - 2); }
+        }
+        else { g.DrawLine(pen, cx - 5, cy - 5, cx + 5, cy + 5); g.DrawLine(pen, cx + 5, cy - 5, cx - 5, cy + 5); }
+    }
+}
+
+class TitleBar : Control
+{
+    public Palette Pal = Palette.Day; public Icon Ico;
+    public readonly CapButton Min = new CapButton { Kind = 0 }, Max = new CapButton { Kind = 1 }, Close = new CapButton { Kind = 2 };
+    public readonly Badge Credit = new Badge { Width = 330, Text = "Directed by Mohamed Sayed · محمد سيد" };
+    public TitleBar()
+    {
+        SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
+        Font = new Font("Segoe UI", 9.5f);
+        Controls.AddRange(new Control[] { Min, Max, Close, Credit });
+        Resize += (s, e) => Arrange();
+    }
+    public void Arrange()
+    {
+        int bw = 48; Close.SetBounds(Width - bw, 0, bw, Height); Max.SetBounds(Width - 2 * bw, 0, bw, Height); Min.SetBounds(Width - 3 * bw, 0, bw, Height);
+        Credit.Height = 34; Credit.Location = new Point(Math.Max(300, (Width - Credit.Width) / 2), (Height - 34) / 2);
+        Min.Pal = Max.Pal = Close.Pal = Pal; Credit.Pal = Pal;
+    }
+    protected override void WndProc(ref Message m)
+    {
+        if (m.Msg == 0x84) { m.Result = (IntPtr)(-1); return; } // HTTRANSPARENT: let the form decide (drag / resize)
+        base.WndProc(ref m);
+    }
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        var g = e.Graphics; G.Quality(g);
+        using (var b = new LinearGradientBrush(ClientRectangle, ControlPaint.LightLight(Pal.Strip1), Pal.Strip1, 90f)) g.FillRectangle(b, ClientRectangle);
+        using (var p = new Pen(Color.FromArgb(200, 255, 255, 255))) g.DrawLine(p, 0, 0, Width, 0);
+        int x = 12;
+        if (Ico != null) { g.DrawIcon(Ico, new Rectangle(x, (Height - 18) / 2, 18, 18)); x += 28; }
+        var tr = new RectangleF(x, 0, Math.Max(10, Credit.Left - x - 12), Height);
+        var sf = new StringFormat { LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap };
+        using var tb = new SolidBrush(Pal.Ink); g.DrawString(Text, Font, tb, tr, sf);
+    }
+}
